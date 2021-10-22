@@ -21,6 +21,7 @@ import pandas as pd
 import multiprocessing as mp
 from functools import partial
 
+from plots import RangeTimeIntervalPlot as RTI
 from get_fit_data import FetchData
 import utils
 
@@ -91,8 +92,8 @@ class Filter(object):
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=hw[0]) & (fil_frame.time<hw[1])]
             for fc in self.filters:
-                if fc == "a": fil_frame = fil_frame[np.abs(fil_frame.v)>=50.]
-                if fc == "b": fil_frame = fil_frame[fil_frame.w_l>=50.]
+                if fc == "a": fil_frame = fil_frame[np.abs(fil_frame.v)>=30.]
+                if fc == "b": fil_frame = fil_frame[fil_frame.w_l>=30.]
                 if fc == "c": fil_frame = fil_frame[fil_frame.gflg==0]
                 if fc == "d": fil_frame = fil_frame[fil_frame.p_l>3.]
                 if fc == "e": fil_frame = fil_frame[(fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
@@ -108,6 +109,13 @@ class Filter(object):
         """
         Save data into files for latter accessing.
         """
+        time_str = self.dates[0].strftime("%Y.%m.%dT%H:%M") + "-" + self.dates[1].strftime("%H:%M") + " UT"
+        mdates = np.unique(self.frame.time)
+        rti = RTI(100, mdates, num_subplots=2)
+        rti.addParamPlot(self.frame, self.beams[0], xlabel="",
+                         title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
+        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters))
+        rti.save("tmp/out.png")
         return
     
 class DataFetcherFilter(object):
@@ -118,7 +126,7 @@ class DataFetcherFilter(object):
     based on the given filtering condition.
     """
     
-    def __init__(self, _filestr="config/logs/*.txt", cores=24, filters=["a", "b", "c", "d", "e", "f"], run_first=None):
+    def __init__(self, _filestr="config/logs/*.txt", cores=24, filters=["a", "d", "e", "f"], run_first=None):
         """
         Params
         ------
