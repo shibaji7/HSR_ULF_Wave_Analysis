@@ -17,6 +17,8 @@ import glob
 from loguru import logger
 import configparser
 
+from matplotlib.dates import date2num
+
 def read_rbsp_logs(_filestr="config/logs/*.txt"):
     """
     Read all log files and store them each records 
@@ -75,6 +77,51 @@ def get_gridded_parameters(q, xparam="beam", yparam="slist", zparam="v", r=0, ro
             np.isnan(plotParamDF[zparam].values),
             plotParamDF[zparam].values)
     return X,Y,Z
+
+def ribiero_gs_flg(vel, time):
+    L = np.abs(time[-1] - time[0]) * 24
+    high = np.sum(np.abs(vel) > 15.0)
+    low = np.sum(np.abs(vel) <= 15.0)
+    if low == 0: R = 1.0  # TODO hmm... this works right?
+    else: R = high / low  # High vel / low vel ratio
+    # See Figure 4 in Ribiero 2011
+    if L > 14.0:
+        # Addition by us
+        if R > 0.15: return False    # IS
+        else: return True     # GS
+        # Classic Ribiero 2011
+        #return True  # GS
+    elif L > 3:
+        if R > 0.2: return False
+        else: return True
+    elif L > 2:
+        if R > 0.33: return False
+        else: return True
+    elif L > 1:
+        if R > 0.475: return False
+        else: return True
+    # Addition by Burrell 2018 "Solar influences..."
+    else:
+        if R > 0.5: return False
+        else: return True
+    # Classic Ribiero 2011
+    # else:
+    #    return False
+
+def _run_riberio_threshold_on_rad(u, flag="gflg_ribiero"):
+    df = u.copy()
+    clust_flag = np.array(df.cluster_tag)
+    gs_flg = np.zeros_like(clust_flag)
+    vel = np.hstack(np.abs(df.v))
+    t = np.hstack(df.time.apply(lambda x: date2num(x)))
+    clust_flag[np.array(df.slist) < 7] = -1
+    gs_flg = np.zeros_like(clust_flag)
+    for c in np.unique(clust_flag):
+        clust_mask = c == clust_flag
+        if c == -1: gs_flg[clust_mask] = -1
+        else: gs_flg[clust_mask] = ribiero_gs_flg(vel[clust_mask], t[clust_mask])
+    df[flag] = gs_flg
+    return df
 
 if __name__ == "__main__":
     "__main__ function"

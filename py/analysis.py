@@ -18,12 +18,36 @@ from loguru import logger
 import datetime as dt
 import numpy as np
 import pandas as pd
+from sklearn.cluster import DBSCAN
 import multiprocessing as mp
 from functools import partial
 
 from plots import RangeTimeIntervalPlot as RTI
 from get_fit_data import FetchData
 import utils
+
+
+class DBScan(object):
+    """ Class to cluster 2D or 3D data """
+    
+    def __init__(self, frame, params={"eps_g":1, "eps_s":1, "min_samples":10, "eps":1}):
+        self.frame = frame
+        for k in params.keys():
+            setattr(self, k, params[k])
+        self.run_2D_cluster_bybeam()
+        return
+    
+    def run_2D_cluster_bybeam(self):
+        o = pd.DataFrame()
+        for b in np.unique(self.frame.bmnum):
+            _o = self.frame[self.frame.bmnum==b]
+            _o.slist, _o.scnum, eps, min_samples = _o.slist/self.eps_g, _o.scnum/self.eps_s, self.eps, self.min_samples
+            ds = DBSCAN(eps=self.eps, min_samples=min_samples).fit(_o[["slist", "scnum"]].values)
+            _o["cluster_tag"] = ds.labels_
+            _o = utils._run_riberio_threshold_on_rad(_o)
+            o = pd.concat([o, _o])
+        self.frame = o.sort_values("time").copy()
+        return
 
 class Filter(object):
     """
@@ -70,9 +94,10 @@ class Filter(object):
         """
         logger.info(f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}")
         self.fd = FetchData(self.rad, self.dates)
-        beams, _ = self.fd.fetch_data(by="beams")
-        self.frame = self.fd.convert_to_pandas(beams)
+        _, scans = self.fd.fetch_data(by="scan")
+        self.frame = self.fd.scans_to_pandas(scans)
         self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
+        self.db = DBScan(self.frame.copy())
         return
     
     def _filter(self):
@@ -92,8 +117,8 @@ class Filter(object):
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=hw[0]) & (fil_frame.time<hw[1])]
             for fc in self.filters:
-                if fc == "a": fil_frame = fil_frame[np.abs(fil_frame.v)>=30.]
-                if fc == "b": fil_frame = fil_frame[fil_frame.w_l>=30.]
+                if fc == "a": fil_frame = fil_frame[np.abs(fil_frame.v)>=50.]
+                if fc == "b": fil_frame = fil_frame[fil_frame.w_l>=50.]
                 if fc == "c": fil_frame = fil_frame[fil_frame.gflg==0]
                 if fc == "d": fil_frame = fil_frame[fil_frame.p_l>3.]
                 if fc == "e": fil_frame = fil_frame[(fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
@@ -111,10 +136,11 @@ class Filter(object):
         """
         time_str = self.dates[0].strftime("%Y.%m.%dT%H:%M") + "-" + self.dates[1].strftime("%H:%M") + " UT"
         mdates = np.unique(self.frame.time)
-        rti = RTI(100, mdates, num_subplots=2)
+        rti = RTI(100, mdates, num_subplots=3)
         rti.addParamPlot(self.frame, self.beams[0], xlabel="",
                          title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
-        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters))
+        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters), xlabel="")
+        rti.addGSIS(self.db.frame, self.beams[0], "")
         rti.save("tmp/out.png")
         return
     

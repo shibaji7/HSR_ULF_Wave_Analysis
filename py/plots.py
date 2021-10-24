@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
 from matplotlib.ticker import MultipleLocator
+import matplotlib.patches as mpatches
 
 import numpy as np
 
@@ -87,6 +88,45 @@ class RangeTimeIntervalPlot(object):
         self._add_colorbar(self.fig, ax, bounds, cmap, label=label)
         ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
         return
+    
+    def addGSIS(self, df, beam, title, xlabel="", ylabel="Range gate", zparam="gflg_ribiero"):
+        # add new axis
+        ax = self._add_axis()
+        df = df[df.bmnum==beam]
+        X, Y, Z = utils.get_gridded_parameters(df, xparam="time", yparam="slist", zparam=zparam, rounding=False)
+        flags = np.array(df[zparam]).astype(int)
+        if -1 in flags and 2 in flags:                     # contains noise flag
+            cmap = mpl.colors.ListedColormap([(0.0, 0.0, 0.0, 1.0),     # black
+                (1.0, 0.0, 0.0, 1.0),     # blue
+                (0.0, 0.0, 1.0, 1.0),     # red
+                (0.0, 1.0, 0.0, 1.0)])    # green
+            bounds = [-1, 0, 1, 2, 3]      # Lower bound inclusive, upper bound non-inclusive
+            handles = [mpatches.Patch(color="red", label="IS"), mpatches.Patch(color="blue", label="GS"),
+                      mpatches.Patch(color="black", label="US"), mpatches.Patch(color="green", label="SAIS")]
+        elif -1 in flags and 2 not in flags:
+            cmap = matplotlib.colors.ListedColormap([(0.0, 0.0, 0.0, 1.0),     # black
+                                              (1.0, 0.0, 0.0, 1.0),     # blue
+                                              (0.0, 0.0, 1.0, 1.0)])    # red
+            bounds = [-1, 0, 1, 2]      # Lower bound inclusive, upper bound non-inclusive
+            handles = [mpatches.Patch(color="red", label="IS"), mpatches.Patch(color="blue", label="GS"),
+                      mpatches.Patch(color="black", label="US")]
+        else:
+            cmap = matplotlib.colors.ListedColormap([(1.0, 0.0, 0.0, 1.0),  # blue
+                                              (0.0, 0.0, 1.0, 1.0)])  # red
+            bounds = [0, 1, 2]          # Lower bound inclusive, upper bound non-inclusive
+            handles = [mpatches.Patch(color="red", label="IS"), mpatches.Patch(color="blue", label="GS")]
+        norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+        ax.xaxis.set_major_formatter(DateFormatter(r"$%H^{%M}$"))
+        hours = mdates.HourLocator(byhour=range(0, 24, 4))
+        ax.xaxis.set_major_locator(hours)
+        ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_xlim([self.unique_times[0], self.unique_times[-1]])
+        ax.set_ylim([0, self.nrang])
+        ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.pcolormesh(X, Y, Z.T, lw=0.01, edgecolors="None", cmap=cmap, norm=norm)
+        ax.set_title(title,  loc="left", fontdict={"fontweight": "bold"})
+        ax.legend(handles=handles, loc=1)
+        return ax
     
     def _add_axis(self):
         self._num_subplots_created += 1
