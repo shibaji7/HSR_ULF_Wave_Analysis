@@ -66,7 +66,8 @@ class Filter(object):
             interval will be discarded.
     """
     
-    def __init__(self, rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=1., gflg_key="gflg"):
+    def __init__(self, rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=1., 
+                 gflg_key="gflg", w_mins=10., param="v"):
         """
         Parameters
         ----------
@@ -76,6 +77,8 @@ class Filter(object):
         hour_win - Filtering hour window
         gflg_key - G-Flag key to access
         filters - combinations of three filtering criteria
+        w_mins - Minute window
+        param - parameter to be detrend
         """
         self.rad = rad
         self.dates = dates
@@ -83,6 +86,8 @@ class Filter(object):
         self.hour_win = hour_win
         self.gflg_key = gflg_key
         self.filters = filters
+        self.w_mins = w_mins
+        self.param = param
         self._fetch()
         self._filter()
         return
@@ -91,8 +96,12 @@ class Filter(object):
         """
         Fetch radar data from repository
         """
+        dates = [
+                    self.dates[0]-dt.timedelta(minutes=self.w_mins/2),
+                    self.dates[1]+dt.timedelta(minutes=self.w_mins/2)
+                ] if self.w_mins is not None else self.dates
         logger.info(f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}")
-        self.fd = FetchData(self.rad, self.dates)
+        self.fd = FetchData(self.rad, dates)
         _, scans = self.fd.fetch_data(by="scan")
         self.frame = self.fd.scans_to_pandas(scans)
         self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
@@ -106,18 +115,18 @@ class Filter(object):
         Filter data based on the beams 
         and given filter criteria
         """
-        hour_length = np.rint((self.dates[1]-self.dates[0]).total_seconds()/3600.)
-        hours = [(self.dates[0]+dt.timedelta(hours=h),
-                  self.dates[0]+dt.timedelta(hours=h+1)) for h in range(int(hour_length)-1)]
-        logger.info(f" Toral hour window length {hour_length}")
+        time_length = np.rint((self.dates[1]-self.dates[0]).total_seconds()/(self.hour_win*3600.))
+        time_windows = [(self.dates[0]+dt.timedelta(hours=h*self.hour_win),
+                  self.dates[0]+dt.timedelta(hours=(h+1)*self.hour_win)) for h in range(int(time_length))]
+        logger.info(f" Toral time window length {time_length}")
         logger.info(f" RBSP beams {'-'.join([str(b) for b in self.beams])}")
         logger.info(f" RBSP total data {len(self.frame)}")
         self.fil_frame = pd.DataFrame()
-        for hw in hours:
+        for tw in time_windows:
             add_frame = True
             fil_frame = self.frame.copy()
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
-            fil_frame = fil_frame[(fil_frame.time>=hw[0]) & (fil_frame.time<hw[1])]
+            fil_frame = fil_frame[(fil_frame.time>=tw[0]) & (fil_frame.time<tw[1])]
             if "a" in self.filters: 
                 if -1 in fil_frame[self.gflg_key].tolist(): 
                     fil_frame = fil_frame[((np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.)) & (fil_frame[self.gflg_key]==0)]
@@ -126,37 +135,70 @@ class Filter(object):
             if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>765.]
             if "d" in self.filters:
                 max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
-                                               np.diff([hw[0]] + fil_frame.time.tolist() + [hw[1]])]))
-                logger.info(f"DLen of {hw[0].strftime('%Y.%m.%dT%H.%M')}-{hw[1].strftime('%Y.%m.%dT%H.%M')} -hour- {len(fil_frame)} & max(td)-{max_tdiff}")
+                                               np.diff([tw[0]] + fil_frame.time.tolist() + [tw[1]])]))
+                logger.info(f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- {len(fil_frame)} & max(td)-{max_tdiff}")
                 if (len(fil_frame) < 134) or (max_tdiff >= 10.): add_frame = False
             if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
+        # Detrending
+        logger.info(f" Started detreanding data points, {len(self.frame)}")
+        self.d_frame = self.frame.apply(self.__trnd_support__, axis=1)
+        logger.info(f" Done detreanding data points, {len(self.d_frame)}")
         return
     
-    def _detrnd(self, w_mins=10., param="v"):
+    def __trnd_support__(self, row):
         """
-        Detrend the velocity data.
-        w_mins - Minute window
-        param - parameter to be detrend
+        Detrend the velocity data - Support Function.
         """
-        p_list = np.array(self.frame[param])
-        return
+        pval = np.nan
+        b, g, t, p_raw = row["bmnum"], row["slist"], row["time"], row[self.param]
+        if (t >= self.dates[0]) & (t <= self.dates[-1]):
+            t_start, t_end = t - dt.timedelta(minutes=self.w_mins/2), t + dt.timedelta(minutes=self.w_mins/2)
+            x = self.frame[(self.frame.bmnum==b) & (self.frame.slist==g) & 
+                           (self.frame.time>=t_start) & (self.frame.time>=t_end)]
+            pval = p_raw - np.nanmedian(x[self.param])
+        row[self.param] = pval
+        return row
     
-    def _save(self):
+    def _save(self, rclist=[]):
         """
         Save data into files for latter accessing.
         """
         time_str = self.dates[0].strftime("%Y.%m.%dT%H:%M") + "-" + self.dates[1].strftime("%H:%M") + " UT"
-        mdates = np.unique(self.frame.time)
-        nplots = 2
+        nplots = 3
         nplots = nplots+1 if "ribiero" in self.gflg_key else nplots
-        rti = RTI(100, mdates, num_subplots=nplots)
+        nplots = nplots+1 if len(rclist)>0 else nplots
+        rti = RTI(100, self.dates, num_subplots=nplots)
         rti.addParamPlot(self.frame, self.beams[0], xlabel="",
                          title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
-        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters), xlabel="")
+        rti.addParamPlot(self.d_frame, self.beams[0], title=r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
+        for rc in rclist:
+            rti.add_range_cell_data(self.d_frame, rc, title=r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
+            rti.rc_ax.legend(loc=1)
+        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters))
         if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
         rti.save("tmp/out.png")
         return
+    
+    @staticmethod
+    def filter_data_by_detrending(rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=1., 
+                                  gflg_key="gflg", w_mins=10., param="v", rclist=[]):
+        """
+        Parameters
+        ----------
+        rad - 3 char radar code
+        dates - [sdate, edate]
+        beams - RBSP beam numbers
+        hour_win - Filtering hour window
+        gflg_key - G-Flag key to access
+        filters - combinations of three filtering criteria
+        w_mins - Minute window
+        param - parameter to be detrend
+        rclist - list of range cell plots
+        """
+        f = Filter(rad, dates, beams, filters, hour_win, gflg_key, w_mins, param)
+        f._save(rclist)
+        return f
     
 class DataFetcherFilter(object):
     """
@@ -196,8 +238,7 @@ class DataFetcherFilter(object):
         """
         rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
         logger.info(f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}")
-        f = Filter(rad, dates, beams, self.filters, gflg_key=self.gflg_key)
-        f._detrnd(self.w_mins, self.param)
+        f = Filter(rad, dates, beams, self.filters, gflg_key=self.gflg_key, w_mins=self.w_mins, param=self.param)
         f._save()
         return f
     
@@ -217,5 +258,8 @@ class DataFetcherFilter(object):
 
 if __name__ == "__main__":
     "__main__ function"
-    DataFetcherFilter(filters=["a"], run_first=1, gflg_key="gflg_ribiero")
+    #DataFetcherFilter(filters=["a"], run_first=1, gflg_key="gflg_ribiero")
+    Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
+                                    hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
+                                                          {"bmnum":12, "gate":15, "color":"b"}])
     pass
