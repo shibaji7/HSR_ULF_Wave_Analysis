@@ -106,6 +106,7 @@ class Filter(object):
         self.frame = self.fd.scans_to_pandas(scans)
         self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
         if "ribiero" in self.gflg_key: 
+            logger.info(f" Modify GS flag.")
             self.db = DBScan(self.frame.copy())
             self.frame = self.db.frame.copy()
         return
@@ -129,10 +130,10 @@ class Filter(object):
             fil_frame = fil_frame[(fil_frame.time>=tw[0]) & (fil_frame.time<tw[1])]
             if "a" in self.filters: 
                 if -1 in fil_frame[self.gflg_key].tolist(): 
-                    fil_frame = fil_frame[((np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.)) & (fil_frame[self.gflg_key]==0)]
+                    fil_frame = fil_frame[(np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.) | (fil_frame[self.gflg_key]==0)]
                 else: fil_frame = fil_frame[fil_frame[self.gflg_key]==0]
             if "b" in self.filters: fil_frame = fil_frame[(fil_frame.p_l>3.) & (fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
-            if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>765.]
+            if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>500.]
             if "d" in self.filters:
                 max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
                                                np.diff([tw[0]] + fil_frame.time.tolist() + [tw[1]])]))
@@ -140,9 +141,9 @@ class Filter(object):
                 if (len(fil_frame) < 134) or (max_tdiff >= 10.): add_frame = False
             if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
-        # Detrending
-        logger.info(f" Started detreanding data points, {len(self.frame)}")
-        self.d_frame = self.frame.apply(self.__trnd_support__, axis=1)
+        # Detrending the dataset
+        logger.info(f" Started detreanding data points, {len(self.fil_frame)}")
+        self.d_frame = self.fil_frame.apply(self.__trnd_support__, axis=1)
         logger.info(f" Done detreanding data points, {len(self.d_frame)}")
         return
     
@@ -171,11 +172,12 @@ class Filter(object):
         rti = RTI(100, self.dates, num_subplots=nplots)
         rti.addParamPlot(self.frame, self.beams[0], xlabel="",
                          title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
-        rti.addParamPlot(self.d_frame, self.beams[0], title=r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
+        rti.addParamPlot(self.d_frame, self.beams[0], title="Filters: %s \& "%"-".join(self.filters)+\
+                                    r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
         for rc in rclist:
-            rti.add_range_cell_data(self.d_frame, rc, title=r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
+            rti.add_range_cell_data(self.d_frame, rc, title="Filters: %s \& "%"-".join(self.filters)+\
+                                    r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
             rti.rc_ax.legend(loc=1)
-        rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters))
         if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
         rti.save("tmp/out.png")
         return
