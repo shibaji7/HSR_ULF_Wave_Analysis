@@ -54,14 +54,11 @@ class Filter(object):
     For each 1-hour interval, select only ionospheric backscatter
     and reject ground scatter by requiring backscatter to satisfy
     one of the following conditions: 
-        a) Doppler velocity|VLOS| >= 50 m/s; 
-        b) Spectral width W >= 50 m/s; 
-        c) Backscatter is flagged as ionospheric scatter by 
-            traditional method.
-        d) Power is greater than 3 dB
-        e) Errors in VLOS or W < 100 m/s
-        f) Remove near-range data (slant range <= 765 km)
-        g) If the number of data points in 1-hour interval is 
+        a) Doppler velocity|VLOS| >= 50 m/s or Spectral width W >= 50 m/s or 
+            Backscatter is flagged as ionospheric scatter by traditional method.
+        b) Power is greater than 3 dB and Errors in VLOS & W < 100 m/s
+        c) Remove near-range data (slant range <= 765 km)
+        d) If the number of data points in 1-hour interval is 
             less than 134 (2/3 of the total number assuming an 
             18-s sampling rate)or the largest data gap in the 
             1-hour interval is greater than 6 minutes 
@@ -69,7 +66,7 @@ class Filter(object):
             interval will be discarded.
     """
     
-    def __init__(self, rad, dates, beams, filters=["a", "b", "c", "d", "e", "f"], hour_win=1.):
+    def __init__(self, rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=1., gflg_key="gflg"):
         """
         Parameters
         ----------
@@ -77,12 +74,14 @@ class Filter(object):
         dates - [sdate, edate]
         beams - RBSP beam numbers
         hour_win - Filtering hour window
+        gflg_key - G-Flag key to access
         filters - combinations of three filtering criteria
         """
         self.rad = rad
         self.dates = dates
         self.beams = beams
         self.hour_win = hour_win
+        self.gflg_key = gflg_key
         self.filters = filters
         self._fetch()
         self._filter()
@@ -97,7 +96,9 @@ class Filter(object):
         _, scans = self.fd.fetch_data(by="scan")
         self.frame = self.fd.scans_to_pandas(scans)
         self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
-        self.db = DBScan(self.frame.copy())
+        if "ribiero" in self.gflg_key: 
+            self.db = DBScan(self.frame.copy())
+            self.frame = self.db.frame.copy()
         return
     
     def _filter(self):
@@ -113,21 +114,32 @@ class Filter(object):
         logger.info(f" RBSP total data {len(self.frame)}")
         self.fil_frame = pd.DataFrame()
         for hw in hours:
+            add_frame = True
             fil_frame = self.frame.copy()
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=hw[0]) & (fil_frame.time<hw[1])]
-            for fc in self.filters:
-                if fc == "a": fil_frame = fil_frame[np.abs(fil_frame.v)>=50.]
-                if fc == "b": fil_frame = fil_frame[fil_frame.w_l>=50.]
-                if fc == "c": fil_frame = fil_frame[fil_frame.gflg==0]
-                if fc == "d": fil_frame = fil_frame[fil_frame.p_l>3.]
-                if fc == "e": fil_frame = fil_frame[(fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
-                if fc == "f": fil_frame = fil_frame[fil_frame.srange>765.]
-            max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
-                                           np.diff([hw[0]] + fil_frame.time.tolist() + [hw[1]])]))
-            logger.info(f"DLen of {hw[0].strftime('%Y.%m.%dT%H.%M')}-{hw[1].strftime('%Y.%m.%dT%H.%M')} -hour- {len(fil_frame)} & max(td)-{max_tdiff}")
-            self.fil_frame = pd.concat([self.fil_frame, fil_frame])
+            if "a" in self.filters: 
+                if -1 in fil_frame[self.gflg_key].tolist(): 
+                    fil_frame = fil_frame[((np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.)) & (fil_frame[self.gflg_key]==0)]
+                else: fil_frame = fil_frame[fil_frame[self.gflg_key]==0]
+            if "b" in self.filters: fil_frame = fil_frame[(fil_frame.p_l>3.) & (fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
+            if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>765.]
+            if "d" in self.filters:
+                max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
+                                               np.diff([hw[0]] + fil_frame.time.tolist() + [hw[1]])]))
+                logger.info(f"DLen of {hw[0].strftime('%Y.%m.%dT%H.%M')}-{hw[1].strftime('%Y.%m.%dT%H.%M')} -hour- {len(fil_frame)} & max(td)-{max_tdiff}")
+                if (len(fil_frame) < 134) or (max_tdiff >= 10.): add_frame = False
+            if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
+        return
+    
+    def _detrnd(self, w_mins=10., param="v"):
+        """
+        Detrend the velocity data.
+        w_mins - Minute window
+        param - parameter to be detrend
+        """
+        p_list = np.array(self.frame[param])
         return
     
     def _save(self):
@@ -136,11 +148,13 @@ class Filter(object):
         """
         time_str = self.dates[0].strftime("%Y.%m.%dT%H:%M") + "-" + self.dates[1].strftime("%H:%M") + " UT"
         mdates = np.unique(self.frame.time)
-        rti = RTI(100, mdates, num_subplots=3)
+        nplots = 2
+        nplots = nplots+1 if "ribiero" in self.gflg_key else nplots
+        rti = RTI(100, mdates, num_subplots=nplots)
         rti.addParamPlot(self.frame, self.beams[0], xlabel="",
                          title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
         rti.addParamSctr(self.fil_frame, self.beams[0], "Filters: %s"%"-".join(self.filters), xlabel="")
-        rti.addGSIS(self.db.frame, self.beams[0], "")
+        if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
         rti.save("tmp/out.png")
         return
     
@@ -152,30 +166,38 @@ class DataFetcherFilter(object):
     based on the given filtering condition.
     """
     
-    def __init__(self, _filestr="config/logs/*.txt", cores=24, filters=["a", "d", "e", "f"], run_first=None):
+    def __init__(self, _filestr="config/logs/*.txt", cores=24, filters=["a", "b", "c", "d"], run_first=None, 
+                 gflg_key=None, param="v", w_mins=10.):
         """
         Params
         ------
         _filestr - Regular expression to search files
         cores - Mutiprocessing cores
         filters - Combinations of three filtering criteria
+        gflg_key - G-Flag key to access
+        w_mins - Minute window
+        param - parameter to be detrend
         run_first - Firt N modes to run
         """
         self._filestr = _filestr
         self.cores = cores
         self.run_first = run_first
+        self.param = param
+        self.w_mins = w_mins
+        self.gflg_key = "gflg" if gflg_key is None else gflg_key
         self.filters = filters
         self.rbsp_logs = utils.read_rbsp_logs(_filestr)
         self._run()
         return
     
-    def _proc(self, o, filters=["a", "b", "c"]):
+    def _proc(self, o):
         """
         Process method to invoke filter
         """
         rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
         logger.info(f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}")
-        f = Filter(rad, dates, beams, filters)
+        f = Filter(rad, dates, beams, self.filters, gflg_key=self.gflg_key)
+        f._detrnd(self.w_mins, self.param)
         f._save()
         return f
     
@@ -188,12 +210,12 @@ class DataFetcherFilter(object):
         self.flist = []
         rlist = self.rbsp_logs if self.run_first is None else self.rbsp_logs[:self.run_first]
         p0 = mp.Pool(self.cores)
-        partial_filter = partial(self._proc, filters=self.filters)
+        partial_filter = partial(self._proc)
         for f in p0.map(partial_filter, rlist):
             self.flist.append(f)
         return
 
 if __name__ == "__main__":
     "__main__ function"
-    DataFetcherFilter(run_first=1)
+    DataFetcherFilter(filters=["a"], run_first=1, gflg_key="gflg_ribiero")
     pass
