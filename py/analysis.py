@@ -90,6 +90,7 @@ class Filter(object):
         self.param = param
         self._fetch()
         self._filter()
+        self.dirs = utils.folders(date=dates[0])
         return
     
     def _fetch(self):
@@ -161,25 +162,39 @@ class Filter(object):
         row[self.param] = pval
         return row
     
-    def _save(self, rclist=[]):
+    def _plots(self, beams=[], rclist=[]):
         """
-        Save data into files for latter accessing.
+        Plot data into PNG files
         """
         time_str = self.dates[0].strftime("%Y.%m.%dT%H:%M") + "-" + self.dates[1].strftime("%H:%M") + " UT"
         nplots = 3
         nplots = nplots+1 if "ribiero" in self.gflg_key else nplots
         nplots = nplots+1 if len(rclist)>0 else nplots
-        rti = RTI(100, self.dates, num_subplots=nplots)
-        rti.addParamPlot(self.frame, self.beams[0], xlabel="",
-                         title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
-        rti.addParamPlot(self.d_frame, self.beams[0], title="Filters: %s \& "%"-".join(self.filters)+\
-                                    r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
-        for rc in rclist:
-            rti.add_range_cell_data(self.d_frame, rc, title="Filters: %s \& "%"-".join(self.filters)+\
-                                    r"Detrend $[T_w=%d minutes]$"%self.w_mins, xlabel="")
-            rti.rc_ax.legend(loc=1)
-        if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
-        rti.save("tmp/out.png")
+        beams = beams if (beams is not None) and (len(beams) > 0) else self.beams
+        for bm in beams:
+            rti = RTI(100, self.dates, num_subplots=nplots)
+            rti.addParamPlot(self.frame, self.beams[0], xlabel="",
+                             title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
+            rti.addParamPlot(self.d_frame, self.beams[0], title="Filters: %s \& "%"-".join(self.filters)+\
+                                        r"Detrend $[T_w=%d-mins]$"%self.w_mins, xlabel="")
+            for rc in rclist:
+                rti.add_range_cell_data(self.d_frame, rc, title="Filters: %s \& "%"-".join(self.filters)+\
+                                        r"Detrend $[T_w=%d-mins]$"%self.w_mins)
+                rti.rc_ax.legend(loc=1)
+            if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
+            rti.save(self.dirs["radar_rti_plot"].format(rad=self.rad, bm="%02d"%self.beams[0], 
+                                                        stime=self.dates[0].strftime("%H%M"), 
+                                                        etime=self.dates[-1].strftime("%H%M")))
+            rti.close()
+        return
+    
+    def _save(self):
+        """
+        Plot data into csv file for later processing.
+        """
+        radar_csv_file = self.dirs["radar_csv_file"].format(rad=self.rad, stime=self.dates[0].strftime("%H%M"),
+                                                            etime=self.dates[-1].strftime("%H%M"))
+        self.d_frame.to_csv(radar_csv_file, index=False, header=True, float_format="%g")
         return
     
     @staticmethod
@@ -199,7 +214,8 @@ class Filter(object):
         rclist - list of range cell plots
         """
         f = Filter(rad, dates, beams, filters, hour_win, gflg_key, w_mins, param)
-        f._save(rclist)
+        f._plots(rclist)
+        f._save()
         return f
     
 class DataFetcherFilter(object):

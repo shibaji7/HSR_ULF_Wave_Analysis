@@ -11,6 +11,8 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import os
+
 import datetime as dt
 import numpy as np
 import glob
@@ -18,6 +20,28 @@ from loguru import logger
 import configparser
 
 from matplotlib.dates import date2num
+
+def folders(base_fold="tmp/sd/", date=None, create=True):
+    """
+    Create folder structures
+    
+    If create 'T' then creates folders else fetch 
+    structure only.
+    """
+    bstr = ""
+    folders = base_fold.split("/")
+    folders = folders if date is None else folders + [date.strftime("%Y-%m-%d")]
+    if create:
+        for d in folders:
+            bstr += d + "/"
+            if not os.path.exists(bstr): os.system("mkdir " + bstr)
+    _dirs_ = dict(
+        base = base_fold,
+        event = base_fold + "/" + date.strftime("%Y-%m-%d"),
+        radar_csv_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}.csv",
+        radar_rti_plot = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{bm}_{stime}_{etime}.png",
+    )
+    return _dirs_
 
 def read_rbsp_logs(_filestr="config/logs/*.txt"):
     """
