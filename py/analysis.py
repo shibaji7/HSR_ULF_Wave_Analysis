@@ -344,26 +344,17 @@ class DataFetcherFilter(object):
     based on the given filtering condition.
     """
     
-    def __init__(self, _filestr="config/logs/*.txt", cores=24, filters=["a", "b", "c", "d"], run_first=None, 
-                 gflg_key=None, param="v", w_mins=15.):
+    def __init__(self, _filestr="config/logs/*.txt", cores=24, run_first=None):
         """
         Params
         ------
         _filestr - Regular expression to search files
         cores - Mutiprocessing cores
-        filters - Combinations of three filtering criteria
-        gflg_key - G-Flag key to access
-        w_mins - Minute window
-        param - parameter to be detrend
         run_first - Firt N modes to run
         """
         self._filestr = _filestr
         self.cores = cores
         self.run_first = run_first
-        self.param = param
-        self.w_mins = w_mins
-        self.gflg_key = "gflg" if gflg_key is None else gflg_key
-        self.filters = filters
         self.rbsp_logs = utils.read_rbsp_logs(_filestr)
         self._run()
         return
@@ -376,9 +367,7 @@ class DataFetcherFilter(object):
         if (o["etime"]-o["stime"]).total_seconds()/3600. >= 1.:
             rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
             logger.info(f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}")
-            f = Filter(rad, dates, beams, self.filters, 
-                       gflg_key=self.gflg_key, w_mins=self.w_mins, 
-                       param=self.param)
+            f = Filter(rad, dates, beams)
             f._save()
         return f
     
