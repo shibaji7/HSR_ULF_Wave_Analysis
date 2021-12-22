@@ -1,0 +1,11 @@
+{
+    "filter": {
+        "hour_win": 1,
+        "gflg_key": "gflg", 
+        "w_mins": 15,
+        "param": "v", 
+        "ts": 18,
+        "nechoe": 140,
+        "max_tdiff": 6
+    }
+}

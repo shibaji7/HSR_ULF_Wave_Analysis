@@ -38,7 +38,10 @@ def folders(base_fold="tmp/sd/", date=None, create=True):
     _dirs_ = dict(
         base = base_fold,
         event = base_fold + "/" + date.strftime("%Y-%m-%d"),
-        radar_csv_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}.csv",
+        radar_dtrnd_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}_d.csv",
+        radar_rsamp_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}_r.csv",
+        radar_fft_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}_fft.csv",
+        radar_log_file = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{stime}_{etime}.log",
         radar_rti_plot = base_fold + "/" + date.strftime("%Y-%m-%d") + "/{rad}_{bm}_{stime}_{etime}.png",
     )
     return _dirs_
