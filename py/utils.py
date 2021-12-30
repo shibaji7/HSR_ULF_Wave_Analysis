@@ -19,7 +19,22 @@ import glob
 from loguru import logger
 import configparser
 
+from scipy.optimize import curve_fit
+from scipy.stats.distributions import t
+
 from matplotlib.dates import date2num
+
+def fitting_curves(x, y, xnew, fn, alpha = 0.05):
+    """
+    Fitting the data with confidance intervals
+    """
+    pars, pcov = curve_fit(fn, x, y)
+    dof = max(0, len(y) - len(pars))
+    ynew = fn(np.array(xnew), *pars)
+    tval = t.ppf(1.0-alpha/2., dof)
+    cov = np.sqrt((np.diagonal(pcov)**2).sum())
+    yu, yl = ynew + tval * cov, ynew + tval * cov
+    return ynew, yu, yl
 
 def folders(base_fold="tmp/sd/", date=None, create=True):
     """

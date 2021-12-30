@@ -11,6 +11,7 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import os
 import sys
 sys.path.extend(["py/"])
 
@@ -24,6 +25,9 @@ from functools import partial
 import json
 from scipy.interpolate import interp1d
 import time
+import shutil
+from scipy.fft import rfft, rfftfreq
+from scipy.signal import get_window
 
 import aacgmv2
 import pydarn
@@ -89,7 +93,7 @@ class Filter(object):
         nechoe - Number of echoes per hour window per cell
         """
         self.proc_start_time = time.time()
-        self.load_params()
+        self.load_params(dates)
         self.rad = rad
         self.dates = dates
         self.beams = beams
@@ -105,16 +109,25 @@ class Filter(object):
         self.log = f" Done initialization: {self.rad}, {self.dates}\n"
         self._fetch()
         self._filter()
-        self.dirs = utils.folders(date=dates[0])
         return
     
-    def load_params(self):
+    def load_params(self, dates):
         """
         Load parameters from 
         """
         with open("config/params.json") as f: o = json.load(f)
         for k in o["filter"]:
             setattr(self, k, o["filter"][k])
+        setattr(self, "run_id", o["run_id"])
+        setattr(self, "save", o["save"])
+        setattr(self, "files", o["files"])
+        self.dirs = {}
+        base = self.files["base"].format(run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d"))
+        if not os.path.exists(base): os.system("mkdir -p "+base)
+        for p in ["raw", "dtrnd", "rsamp", "fft"]:
+            self.dirs[p] = base + self.files["csv"]%(p) 
+        self.dirs["log"] = base + self.files["log"]%("log") 
+        self.dirs["rti_plot"] = base + self.files["rti_plot"]
         return
     
     def _fetch(self):
@@ -173,12 +186,14 @@ class Filter(object):
             if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
         self.log += f" RBSP total data after filter {len(self.fil_frame)}\n"
+        
         # Detrending the dataset
         logger.info(f" Started detreanding data points, {len(self.fil_frame)}")
         self.log += f" Started detreanding data points, {len(self.fil_frame)}\n"
         self.d_frame = self.fil_frame.apply(self.__trnd_support__, axis=1)
         logger.info(f" Done detreanding data points, {len(self.d_frame)}")
         self.log += f" Done detreanding data points, {len(self.d_frame)}\n"
+        
         # Discard, interpolating by 18 sec, and FFT
         self.r_frame = pd.DataFrame()
         self.fft_frame = pd.DataFrame()
@@ -195,7 +210,7 @@ class Filter(object):
         time_length = np.rint((self.dates[1]-self.dates[0]).total_seconds()/(self.hour_win*3600.))
         time_windows = [(self.dates[0]+dt.timedelta(hours=h*self.hour_win),
                   self.dates[0]+dt.timedelta(hours=(h+1)*self.hour_win)) for h in range(int(time_length))]
-        
+        fn = lambda z, m, c: m * z + c
         #Very slow range cell wise interpolation
         for tw in time_windows:
             self.log += f" Time window DIF Op: {tw}\n"
@@ -211,14 +226,17 @@ class Filter(object):
                         tdiff = (tw[1]-tw[0]).total_seconds()/(3600.)
                         x, y = np.array(o.time.apply(lambda t: t.hour*3600 + 
                                                      t.minute*60 + t.second)), np.array(o[self.param])
+                        x, y = x[~np.isnan(y)], y[~np.isnan(y)]
                         start = o.time.tolist()[0]
                         xnew = [x[0]+(i*self.ts) for i in range(int(200*tdiff))]
                         tnew = [start+dt.timedelta(seconds=i*self.ts) for i in range(int(200*tdiff))]
                         f = interp1d(x, y, kind="linear", bounds_error=False, fill_value="extrapolate")
                         ynew = f(xnew)
+                        #ynew, yu, yl = utils.fitting_curves(x, y, xnew, fn)
                         o = pd.DataFrame()
-                        o["time"], o["beam"], o["gate"] = tnew, b, r
-                        o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew
+                        o["time"], o["bmnum"], o["slist"] = tnew, b, r
+                        o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew,
+                        #o[self.param+"_u"], o[self.param+"_l"] = yu, yl
                         self.r_frame = pd.concat([self.r_frame, o])
                         fft = self.__run_fft__(o, b, r)
                         self.fft_frame = pd.concat([self.fft_frame, fft])
@@ -232,7 +250,7 @@ class Filter(object):
         """
         Get AACGMV2 magnetic location
         """
-        lat, lon = self.lats[row["gate"],row["beam"]], self.lons[row["gate"],row["beam"]]
+        lat, lon = self.lats[row["slist"],row["bmnum"]], self.lons[row["slist"],row["bmnum"]]
         row["mlat"], row["mlon"], row["mlt"] = aacgmv2.get_aacgm_coord(lat, lon, 300, row["time"])
         return row
     
@@ -242,12 +260,13 @@ class Filter(object):
         """
         fft = pd.DataFrame()
         n = len(o)
-        Baf = 2.0/n * np.fft.rfft(o[self.param])
-        frq = np.fft.rfftfreq(n)/self.ts
-        fft["frq"] = frq[:n//2]
-        fft[self.param+"_real"], fft[self.param+"_imag"] = np.real(Baf[:n//2]), np.imag(Baf[:n//2])
-        fft["beam"], fft["gate"], fft["rad"] = b, r, self.rad
-        fft["T"] = np.array([1] + [0]*(len(fft)-1))
+        Baf = 2.0/n * rfft(np.array(o[self.param])*get_window("hanning",Nx=n))
+        frq = rfftfreq(n, self.ts)
+        fft["frq"] = frq
+        fft[self.param+"_real"], fft[self.param+"_imag"] = np.real(Baf), np.imag(Baf)
+        fft["amp"], fft["ang"] = np.absolute(Baf), np.angle(Baf, deg=True)
+        fft["bmnum"], fft["slist"], fft["rad"] = b, r, self.rad
+        fft["Tx"] = np.array([1] + [0]*(len(fft)-1))
         return fft
     
     def __trnd_support__(self, row):
@@ -277,16 +296,16 @@ class Filter(object):
             rti = RTI(100, self.dates, num_subplots=nplots)
             rti.addParamPlot(self.frame, self.beams[0], xlabel="",
                              title="Date: %s, Rad: %s[Bm: %02d]"%(time_str, self.rad.upper(), self.beams[0]))
-            rti.addParamPlot(self.d_frame, self.beams[0], title="Filters: %s \& "%"-".join(self.filters)+\
+            rti.addParamPlot(self.r_frame, self.beams[0], title="Filters: %s \& "%"-".join(self.filters)+\
                                         r"Detrend $[T_w=%d mins]$"%self.w_mins, xlabel="")
             for rc in rclist:
-                rti.add_range_cell_data(self.d_frame, rc, title="Filters: %s \& "%"-".join(self.filters)+\
+                rti.add_range_cell_data(self.r_frame, rc, title="Filters: %s \& "%"-".join(self.filters)+\
                                         r"Detrend $[T_w=%d mins]$"%self.w_mins)
                 rti.rc_ax.legend(loc=1)
             if "ribiero" in self.gflg_key: rti.addGSIS(self.db.frame, self.beams[0], "")
-            rti.save(self.dirs["radar_rti_plot"].format(rad=self.rad, bm="%02d"%self.beams[0], 
-                                                        stime=self.dates[0].strftime("%H%M"), 
-                                                        etime=self.dates[-1].strftime("%H%M")))
+            rti.save(self.dirs["rti_plot"].format(rad=self.rad, bm="%02d"%self.beams[0], 
+                                                  stime=self.dates[0].strftime("%H%M"), 
+                                                  etime=self.dates[-1].strftime("%H%M")))
             rti.close()
         return
     
@@ -295,24 +314,23 @@ class Filter(object):
         Print data into csv file for later processing.
         """
         self.log += f" Done processing, saving data to csv and logs.\n"
-        radar_dtrnd_file = self.dirs["radar_dtrnd_file"].format(rad=self.rad, 
-                                                                stime=self.dates[0].strftime("%H%M"),
-                                                                etime=self.dates[-1].strftime("%H%M"))
-        radar_rsamp_file = self.dirs["radar_rsamp_file"].format(rad=self.rad, 
-                                                                stime=self.dates[0].strftime("%H%M"),
-                                                                etime=self.dates[-1].strftime("%H%M"))
-        radar_fft_file = self.dirs["radar_fft_file"].format(rad=self.rad, 
-                                                            stime=self.dates[0].strftime("%H%M"),
-                                                            etime=self.dates[-1].strftime("%H%M"))
-        radar_log_file = self.dirs["radar_log_file"].format(rad=self.rad, 
-                                                            stime=self.dates[0].strftime("%H%M"),
-                                                            etime=self.dates[-1].strftime("%H%M"))
-        self.d_frame.to_csv(radar_dtrnd_file, index=False, header=True, float_format="%g")
-        self.r_frame.to_csv(radar_rsamp_file, index=False, header=True, float_format="%g")
-        self.fft_frame.to_csv(radar_fft_file, index=False, header=True, float_format="%g")
-        logger.info(f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec.")
-        self.log += f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec."
-        with open(radar_log_file, "w") as f: f.writelines(self.log)
+        stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
+        for p in ["raw", "dtrnd", "rsamp", "fft"]:
+            if self.save[p]:
+                file = self.dirs[p].format(rad=self.rad, stime=stime, etime=etime)
+                if p == "raw": self.fil_frame.to_csv(file, index=False, header=True, float_format="%g")
+                if p == "dtrnd": self.d_frame.to_csv(file, index=False, header=True, float_format="%g")
+                if p == "rsamp": self.r_frame.to_csv(file, index=False, header=True, float_format="%g")
+                if p == "fft": self.fft_frame.to_csv(file, index=False, header=True, float_format="%g")
+        if self.save["log"]:
+            file = self.dirs["log"].format(rad=self.rad, stime=stime, etime=etime)
+            logger.info(f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec.")
+            self.log += f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec."
+            with open(file, "w") as f: f.writelines(self.log)
+        base = self.files["base"].format(run_id=self.run_id, date=self.dates[0].strftime("%Y-%m-%d"))
+        prm_file = "/".join(base.split("/")[:-2]) + "/params.json"
+        if self.save["param"] and \
+                (not os.path.exists(prm_file)): shutil.copy("config/params.json", prm_file)
         return
     
     @staticmethod
@@ -388,7 +406,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=146)
+    DataFetcherFilter(run_first=147)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
 #     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],

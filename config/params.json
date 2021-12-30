@@ -1,11 +1,26 @@
 {
+    "run_id": 3,
     "filter": {
         "hour_win": 1,
         "gflg_key": "gflg", 
-        "w_mins": 15,
+        "w_mins": 30,
         "param": "v", 
         "ts": 18,
         "nechoe": 140,
         "max_tdiff": 6
-    }
+    },
+    "save": {
+        "raw": true,
+        "dtrnd": true,
+        "rsamp": true,
+        "fft": true,
+        "log": true,
+        "param": true
+    },
+    "files": {
+        "base": "tmp/sd.run.{run_id}/{date}/",
+        "csv": "{rad}_{stime}_{etime}_%s.csv",
+        "log": "{rad}_{stime}_{etime}_%s.log",
+        "rti_plot": "{rad}_{bm}_{stime}_{etime}.png"
+    }        
 }
