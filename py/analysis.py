@@ -419,12 +419,12 @@ class DataFetcherFilter(object):
 
 if __name__ == "__main__":
     "__main__ function"
-#     start = time.time()
-#     DataFetcherFilter(run_first=147)
-#     end = time.time()
-#     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
-    Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
-                                    hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
-                                                          {"bmnum":12, "gate":15, "color":"b"}],
-                                    nechoe=70)
+    start = time.time()
+    DataFetcherFilter(run_first=147)
+    end = time.time()
+    logger.info(f" Interval time {np.round(end - start, 2)} sec.")
+#     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
+#                                     hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
+#                                                           {"bmnum":12, "gate":15, "color":"b"}],
+#                                     nechoe=70)
     pass
