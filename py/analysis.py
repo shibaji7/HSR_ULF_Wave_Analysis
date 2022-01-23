@@ -24,6 +24,7 @@ import multiprocessing as mp
 from functools import partial
 import json
 from scipy.interpolate import interp1d
+from scipy.stats import t as T
 import time
 import shutil
 from scipy.fft import rfft, rfftfreq
@@ -230,13 +231,15 @@ class Filter(object):
                         start = o.time.tolist()[0]
                         xnew = [x[0]+(i*self.ts) for i in range(int(200*tdiff))]
                         tnew = [start+dt.timedelta(seconds=i*self.ts) for i in range(int(200*tdiff))]
-                        f = interp1d(x, y, kind="linear", bounds_error=False, fill_value="extrapolate")
+                        f = interp1d(x, y, kind=self.fit["kind"], bounds_error=False, fill_value="extrapolate")
                         ynew = f(xnew)
-                        #ynew, yu, yl = utils.fitting_curves(x, y, xnew, fn)
                         o = pd.DataFrame()
                         o["time"], o["bmnum"], o["slist"] = tnew, b, r
-                        o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew,
-                        #o[self.param+"_u"], o[self.param+"_l"] = yu, yl
+                        o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew
+                        o[self.param+".dof"], o[self.param+".sig"] = len(x)-self.fit["dod"], self.fit["sig"]
+                        sprd, ta = self.estimate_spred(f, x, y, xnew)
+                        o[self.param+".sprd"] = sprd*ta
+                        o[self.param+".ub"], o[self.param+".lb"] = ynew + sprd*ta, ynew - sprd*ta
                         self.r_frame = pd.concat([self.r_frame, o])
                         fft = self.__run_fft__(o, b, r)
                         self.fft_frame = pd.concat([self.fft_frame, fft])
@@ -245,6 +248,17 @@ class Filter(object):
             self.r_frame["rad"] = self.rad
             self.r_frame = self.r_frame.apply(self.__get_magnetic_loc__, axis=1)
         return
+    
+    def estimate_spred(self, f, x, y, xnew):
+        """
+        Estimate S_pred from fitting.
+        """
+        xm, n = x.mean(), len(x)
+        sx2 = np.mean((x-xm)**2)
+        sy2 = np.mean((y-f(x))**2)
+        spred = np.sqrt( ( 1 + (1/n) + ((xnew-xm)**2/((n-1)*sx2)) ) )
+        ta = 2*(1-T.ppf(self.fit["sig"], len(x)-self.fit["dod"]))
+        return spred, ta
     
     def __get_magnetic_loc__(self, row):
         """
@@ -405,12 +419,12 @@ class DataFetcherFilter(object):
 
 if __name__ == "__main__":
     "__main__ function"
-    start = time.time()
-    DataFetcherFilter(run_first=147)
-    end = time.time()
-    logger.info(f" Interval time {np.round(end - start, 2)} sec.")
-#     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
-#                                     hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
-#                                                           {"bmnum":12, "gate":15, "color":"b"}],
-#                                     nechoe=70)
+#     start = time.time()
+#     DataFetcherFilter(run_first=147)
+#     end = time.time()
+#     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
+    Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
+                                    hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
+                                                          {"bmnum":12, "gate":15, "color":"b"}],
+                                    nechoe=70)
     pass

@@ -148,8 +148,10 @@ class RangeTimeIntervalPlot(object):
         ax.legend(handles=handles, loc=1)
         return ax
     
-    def add_range_cell_data(self, df, rc, title="", xlabel="Time, UT", ylabel=r"Velocity, $ms^{-1}$"):
-        x, y = df[(df.bmnum==rc["bmnum"]) & (df.slist==rc["gate"])].time, df[(df.bmnum==rc["bmnum"]) & (df.slist==rc["gate"])].v
+    def add_range_cell_data(self, df, rc, title="", xlabel="Time, UT", ylabel=r"Velocity, $ms^{-1}$",
+                            bounds=True):
+        x, y = df[(df.bmnum==rc["bmnum"]) & (df.slist==rc["gate"])].time, df[(df.bmnum==rc["bmnum"]) & 
+                                                                             (df.slist==rc["gate"])].v
         ax = self._add_axis() if self.rc_ax is None else self.rc_ax
         ax.xaxis.set_major_formatter(DateFormatter(r"$%H^{%M}$"))
         hours = mdates.HourLocator(byhour=range(0, 24, 1))
@@ -165,7 +167,10 @@ class RangeTimeIntervalPlot(object):
         #ax.set_ylim([0, self.nrang])
         ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
         ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
-        ax.plot(x, y, color=rc["color"], ls="-", lw=1.0, label="Gate=%02d"%rc["gate"])
+        ax.plot(x, y, color="k", ls="-", lw=0.6)
+        if bounds:
+            ci = df[(df.bmnum==rc["bmnum"]) & (df.slist==rc["gate"])]["v.sprd"]   
+            ax.fill_between(x, (y - ci), (y + ci), color=rc["color"], alpha=0.3, label="Gate=%02d"%rc["gate"])
         self.rc_ax = ax
         return
     
