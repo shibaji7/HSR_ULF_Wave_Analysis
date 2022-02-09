@@ -134,9 +134,16 @@ class Reader(object):
         return
     
 if __name__ == "__main__":
+    # Create a reader object that reads all the RBSP mode entries
     r = Reader()
-    r.check_entries()
-    r.parse_files()
+    # Check for entries by radar / datetime interval
+    r.check_entries(rad="cly")
+    # Read all the files with selected index by passing selected list index
+    r.parse_files(select=[10])
+    # Fetch FFT data by beam and Tx count
     o = r.file_entries[10].get_data(p="fft", beams=[7], Tx=3)
+    print(o.head())
+    # Fetch resample data by beam, time interval
+    o = r.file_entries[10].get_data(p="rsamp", beams=[7])
     print(o.head())
     
