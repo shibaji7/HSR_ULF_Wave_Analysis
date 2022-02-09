@@ -205,3 +205,50 @@ class RangeTimeIntervalPlot(object):
         self.fig.clf()
         plt.close()
         return
+    
+class AnalysisStackPlots(object):
+    """
+    """
+    
+    def __init__(self, fig_title="", num_subplots=3):
+        self.num_subplots = num_subplots
+        self._num_subplots_created = 0
+        self.fig = plt.figure(figsize=(6, 3*num_subplots), dpi=150) # Size for website
+        plt.suptitle(fig_title, x=0.075, y=0.99, ha="left", fontweight="bold", fontsize=15)
+        return
+    
+    def save(self, filepath):
+        self.fig.savefig(filepath, bbox_inches="tight")
+        return
+
+    def close(self):
+        self.fig.clf()
+        plt.close()
+        return
+    
+    def _add_axis(self):
+        self._num_subplots_created += 1
+        ax = self.fig.add_subplot(self.num_subplots, 1, self._num_subplots_created)
+        return ax
+    
+    def add_TS_axes(self, xtime, yval, title="", xlabel="Time, UT", ylabel="Velo, m/s", 
+                    col="r", ls="-", lw=1.0, a=0.7):
+        ax = self._add_axis()
+        ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
+        ax.xaxis.set_major_formatter(DateFormatter(r"$%H^{%M}$"))
+        hours = mdates.HourLocator(byhour=range(0, 24, 1))
+        ax.xaxis.set_major_locator(hours)
+        dtime = (pd.Timestamp(self.dates[-1]).to_pydatetime()-
+                 pd.Timestamp(self.dates[0]).to_pydatetime()).total_seconds()/3600.
+        if dtime < 4.:
+            minutes = mdates.MinuteLocator(byminute=range(0, 60, 10))
+            ax.xaxis.set_minor_locator(minutes)
+            ax.xaxis.set_minor_formatter(DateFormatter(r"$%H^{%M}$"))
+        ax.plot(xtime, yval, col, ls=ls, lw=lw, alpha=a)
+        return
+    
+    def add_FFT_axes(self, o, title="", xlabel="Time, UT", ylabel="Velo, m/s"):
+        ax = self._add_axis()
+        return
