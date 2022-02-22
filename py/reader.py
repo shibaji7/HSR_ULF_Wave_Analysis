@@ -35,16 +35,18 @@ class Folder(object):
         self.dirs = dirs
         self.params = params
         self.frames = {}
+        self.filters = {}
         stime, etime = self.stime.strftime("%H%M"), self.etime.strftime("%H%M")
         for p in params:
             self.dirs[p] = self.dirs[p].format(rad=rad, stime=stime, etime=etime)
             if os.path.exists(self.dirs[p]) and os.stat(self.dirs[p]).st_size > 1: 
                 self.frames[p] = pd.read_csv(self.dirs[p]) if p == "fft" else\
                             pd.read_csv(self.dirs[p], parse_dates=["time"])
+                if p=="fft" or p=="rsamp": self.fetch_filter_options(p)
             else: self.frames[p] = pd.DataFrame()
         return
     
-    def get_data(self, p, T=None, beams=None, Tx=None):
+    def get_data(self, p, T=None, beams=None, gates=None, Tx=None):
         """
         Fetch data form a specific frame with,
         T: Time window
@@ -54,13 +56,33 @@ class Folder(object):
         o = self.frames[p].copy()
         if len(o) > 0:
             if (beams is not None) and (len(beams) > 0): o = o[o.bmnum.isin(beams)]
+            if (gates is not None) and (len(gates) > 0): o = o[o.slist.isin(gates)]
             if (p != "fft") and (T is not None) and (len(T) == 2): o = o[(o.time>=T[0]) & (o.time<T[1])]
-            if (p == "fft") and (Tx is not None): 
-                nTx, N = np.sum(o.Tx), len(o)
-                n = int(N/nTx)
-                o = o.reset_index().drop(columns=["index"])
-                o = o.iloc[Tx*n:(Tx+1)*n]
+            if (Tx is not None) and (len(Tx) > 0): o = o[o.Tx.isin(Tx)]
         return o
+    
+    def fetch_filter_options(self, p):
+        """
+        Find the options of filter selections [valid for FFT and RSAMP]
+        """
+        self.filters[p] = {}
+        o = self.frames[p].copy()
+        if len(o) > 0:
+            txs = o.Tx.unique()
+            for t in txs:
+                self.filters[p][t] = {}
+                if p=="rsamp":
+                    times = o[o.Tx==t].time
+                    tmax, tmin = max(times), min(times)
+                else: tmax, tmin = None, None
+                beams = o[o.Tx==t].bmnum.unique()
+                gates = o[o.Tx==t].slist.unique()
+                logger.warning(f"Parameter({p}), U-Tx({t}), W({(tmin, tmax)}), U-Beams({beams}), U-Gates({gates})")
+                self.filters[p][t]["tmax"] = tmax
+                self.filters[p][t]["tmin"] = tmin
+                self.filters[p][t]["gates"] = gates
+                self.filters[p][t]["beams"] = beams
+        return
 
 class Reader(object):
     """
@@ -159,15 +181,18 @@ if __name__ == "__main__":
     r.check_entries(rad="cly")
     # Read all the files with selected index by passing selected list index
     r.parse_files(select=[select_row])
-    # Fetch FFT data by beam and Tx count
-    of = r.file_entries[select_row].get_data(p="fft", beams=[7], Tx=3)
+    # Fetch FFT data by beam, gate, and Tx count
+    of = r.file_entries[select_row].get_data(p="fft", beams=[7], gates=[30], Tx=[4])
     print(of.head())
     # Fetch resample data by beam, time interval
-    ox = r.file_entries[select_row].get_data(p="rsamp", beams=[7])
+    ox = r.file_entries[select_row].get_data(p="rsamp", beams=[7], gates=[30], Tx=[4])
     print(ox.head())
     # Stack plots
     frames = [
-        {"p": "rsamp", "df": ox, "title": "Rad: CLY, Beam 7, RSamp"},
-        {"p": "fft", "df": of, "title": "Rad: CLY, Beam 7, FFT, Tx=3"}, 
+        {"p": "rsamp", "df": ox, "title": "Rad: CLY, Beam 7, Gate 33, Tx 2, RSamp"},
+        {"p": "fft", "df": of, "title": "Rad: CLY, Beam 7, Gate 33, Tx 2, FFT"}, 
     ]
     r.generate_stacks(frames, r.get_stackplot_fname(select_row))
+    # ptint selection criteria
+    filt_dict = r.file_entries[select_row].filters
+    print(filt_dict)

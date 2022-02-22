@@ -213,7 +213,8 @@ class Filter(object):
                   self.dates[0]+dt.timedelta(hours=(h+1)*self.hour_win)) for h in range(int(time_length))]
         fn = lambda z, m, c: m * z + c
         #Very slow range cell wise interpolation
-        for tw in time_windows:
+        tx = 1
+        for tx, tw in enumerate(time_windows):
             self.log += f" Time window DIF Op: {tw}\n"
             ne = int(self.nechoe * (tw[1]-tw[0]).total_seconds()/(3600.*self.hour_win))
             for b in beams:
@@ -240,8 +241,9 @@ class Filter(object):
                         sprd, ta = self.estimate_spred(f, x, y, xnew)
                         o[self.param+".sprd"] = sprd*ta
                         o[self.param+".ub"], o[self.param+".lb"] = ynew + sprd*ta, ynew - sprd*ta
+                        o["Tx"] = tx
                         self.r_frame = pd.concat([self.r_frame, o])
-                        fft = self.__run_fft__(o, b, r)
+                        fft = self.__run_fft__(o, b, r, tx)
                         self.fft_frame = pd.concat([self.fft_frame, fft])
         if len(self.r_frame) > 0: 
             self.log += f" Manipulate location information.\n"
@@ -268,7 +270,7 @@ class Filter(object):
         row["mlat"], row["mlon"], row["mlt"] = aacgmv2.get_aacgm_coord(lat, lon, 300, row["time"])
         return row
     
-    def __run_fft__(self, o, b, r):
+    def __run_fft__(self, o, b, r, tx):
         """
         Run FFT on velocity data
         """
@@ -280,7 +282,7 @@ class Filter(object):
         fft[self.param+"_real"], fft[self.param+"_imag"] = np.real(Baf), np.imag(Baf)
         fft["amp"], fft["ang"] = np.absolute(Baf), np.angle(Baf, deg=True)
         fft["bmnum"], fft["slist"], fft["rad"] = b, r, self.rad
-        fft["Tx"] = np.array([1] + [0]*(len(fft)-1))
+        fft["Tx"] = tx
         return fft
     
     def __trnd_support__(self, row):

@@ -247,7 +247,7 @@ class AnalysisStackPlots(object):
             ax.xaxis.set_minor_locator(minutes)
             ax.xaxis.set_minor_formatter(DateFormatter(r"$%H^{%M}$"))
         ax.plot(xtime, yval, col+"s", ms=0.8, alpha=a)
-        ax.set_ylim([-500, 500])
+        ax.set_ylim([-1000, 1000])
         return
     
     def add_FFT_axes(self, freq, amp, title="", xlabel="Freq, Hz", ylabel=r"PSD, $(m/s)^2/Hz$"):
