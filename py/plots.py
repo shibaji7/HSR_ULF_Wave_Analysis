@@ -240,15 +240,21 @@ class AnalysisStackPlots(object):
         ax.xaxis.set_major_formatter(DateFormatter(r"$%H^{%M}$"))
         hours = mdates.HourLocator(byhour=range(0, 24, 1))
         ax.xaxis.set_major_locator(hours)
-        dtime = (pd.Timestamp(self.dates[-1]).to_pydatetime()-
-                 pd.Timestamp(self.dates[0]).to_pydatetime()).total_seconds()/3600.
+        dtime = (pd.Timestamp(xtime.tolist()[-1]).to_pydatetime()-
+                 pd.Timestamp(xtime.tolist()[0]).to_pydatetime()).total_seconds()/3600.
         if dtime < 4.:
-            minutes = mdates.MinuteLocator(byminute=range(0, 60, 10))
+            minutes = mdates.MinuteLocator(byminute=range(0, 60, 30))
             ax.xaxis.set_minor_locator(minutes)
             ax.xaxis.set_minor_formatter(DateFormatter(r"$%H^{%M}$"))
-        ax.plot(xtime, yval, col, ls=ls, lw=lw, alpha=a)
+        ax.plot(xtime, yval, col+"s", ms=0.8, alpha=a)
+        ax.set_ylim([-500, 500])
         return
     
-    def add_FFT_axes(self, o, title="", xlabel="Time, UT", ylabel="Velo, m/s"):
+    def add_FFT_axes(self, freq, amp, title="", xlabel="Freq, Hz", ylabel=r"PSD, $(m/s)^2/Hz$"):
         ax = self._add_axis()
+        ax.set_xlabel(xlabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_ylabel(ylabel, fontdict={"size":12, "fontweight": "bold"})
+        ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
+        ax.plot(freq, amp, "ks", ms=0.8)
+        ax.semilogx(freq, amp, "b", ls="-", lw=1.0, alpha=0.7)
         return

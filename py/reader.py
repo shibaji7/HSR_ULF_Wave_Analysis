@@ -20,6 +20,7 @@ import json
 
 from loguru import logger
 import utils
+from plots import AnalysisStackPlots
 
 class Folder(object):
     """
@@ -37,7 +38,9 @@ class Folder(object):
         stime, etime = self.stime.strftime("%H%M"), self.etime.strftime("%H%M")
         for p in params:
             self.dirs[p] = self.dirs[p].format(rad=rad, stime=stime, etime=etime)
-            if os.path.exists(self.dirs[p]): self.frames[p] = pd.read_csv(self.dirs[p])
+            if os.path.exists(self.dirs[p]) and os.stat(self.dirs[p]).st_size > 1: 
+                self.frames[p] = pd.read_csv(self.dirs[p]) if p == "fft" else\
+                            pd.read_csv(self.dirs[p], parse_dates=["time"])
             else: self.frames[p] = pd.DataFrame()
         return
     
@@ -58,17 +61,6 @@ class Folder(object):
                 o = o.reset_index().drop(columns=["index"])
                 o = o.iloc[Tx*n:(Tx+1)*n]
         return o
-    
-    def generate_stacks(self, frames, fig_title="FFT Analysis"):
-        """
-        Generate a stackplots of dataset
-        """
-        asp = AnalysisStackPlots(fig_title=fig_title, num_subplots=len(frames))
-        for f in frames:
-            p, o = f["p"], f["df"]
-            if p == "rsamp": asp.add_TS_axes(o.time, o.v, f["title"])
-            if p == "fft": asp.add_FFT_axes(o, f["title"])
-        return
 
 class Reader(object):
     """
@@ -133,17 +125,49 @@ class Reader(object):
             self.file_entries[i] = Folder(self.dirs, row.rad, row.stime, row.etime)
         return
     
+    def get_stackplot_fname(self, select, Tx=0):
+        """
+        Create plot filename
+        """
+        row = self.rbsp_logs.iloc[select]
+        base = self.files["base"].format(run_id=self.run_id, date=row.stime.strftime("%Y-%m-%d"))
+        fname = base + "{rad}_{stime}_{etime}_{Tx}.png".format(rad=row.rad, stime=row.stime,
+                                                               etime=row.etime, Tx=Tx)
+        return fname
+    
+    def generate_stacks(self, frames, fname, fig_title="FFT Analysis"):
+        """
+        Generate a stackplots of dataset
+        """
+        asp = AnalysisStackPlots(fig_title=fig_title, num_subplots=2)
+        for f in frames:
+            p, o = f["p"], f["df"]
+            if p == "rsamp": asp.add_TS_axes(o.time, o.v, f["title"])
+            if p == "fft": asp.add_FFT_axes(o.frq, o.amp, f["title"])
+        logger.info(f"Save to-{fname}")
+        asp.fig.subplots_adjust(wspace=0.5,hspace=0.5)
+        asp.save(fname)
+        asp.close()
+        return
+    
 if __name__ == "__main__":
+    # Sample datasets
+    select_row = 10
     # Create a reader object that reads all the RBSP mode entries
     r = Reader()
     # Check for entries by radar / datetime interval
     r.check_entries(rad="cly")
     # Read all the files with selected index by passing selected list index
-    r.parse_files(select=[10])
+    r.parse_files(select=[select_row])
     # Fetch FFT data by beam and Tx count
-    o = r.file_entries[10].get_data(p="fft", beams=[7], Tx=3)
-    print(o.head())
+    of = r.file_entries[select_row].get_data(p="fft", beams=[7], Tx=3)
+    print(of.head())
     # Fetch resample data by beam, time interval
-    o = r.file_entries[10].get_data(p="rsamp", beams=[7])
-    print(o.head())
-    
+    ox = r.file_entries[select_row].get_data(p="rsamp", beams=[7])
+    print(ox.head())
+    # Stack plots
+    frames = [
+        {"p": "rsamp", "df": ox, "title": "Rad: CLY, Beam 7, RSamp"},
+        {"p": "fft", "df": of, "title": "Rad: CLY, Beam 7, FFT, Tx=3"}, 
+    ]
+    r.generate_stacks(frames, r.get_stackplot_fname(select_row))
