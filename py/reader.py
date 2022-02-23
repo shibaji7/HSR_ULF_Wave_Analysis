@@ -65,23 +65,21 @@ class Folder(object):
         """
         Find the options of filter selections [valid for FFT and RSAMP]
         """
-        self.filters[p] = {}
+        self.filters[p] = []
         o = self.frames[p].copy()
         if len(o) > 0:
             txs = o.Tx.unique()
             for t in txs:
-                self.filters[p][t] = {}
                 if p=="rsamp":
                     times = o[o.Tx==t].time
                     tmax, tmin = max(times), min(times)
                 else: tmax, tmin = None, None
                 beams = o[o.Tx==t].bmnum.unique()
-                gates = o[o.Tx==t].slist.unique()
-                logger.warning(f"Parameter({p}), U-Tx({t}), W({(tmin, tmax)}), U-Beams({beams}), U-Gates({gates})")
-                self.filters[p][t]["tmax"] = tmax
-                self.filters[p][t]["tmin"] = tmin
-                self.filters[p][t]["gates"] = gates
-                self.filters[p][t]["beams"] = beams
+                for b in beams:
+                    gates = o[(o.Tx==t) & (o.bmnum==b)].slist.unique()
+                    for g in gates:
+                        obj = {"Tx": t, "beam": b, "gate":g, "tmax":tmax, "tmin":tmin}
+                    self.filters[p].append(obj)
         return
 
 class Reader(object):
