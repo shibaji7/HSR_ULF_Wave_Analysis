@@ -189,20 +189,22 @@ class Filter(object):
             fil_frame = self.frame.copy()
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=tw[0]) & (fil_frame.time<tw[1])]
-            nechoes = self.cacl_nechoes(fil_frame.intt.mean())
-            if "a" in self.filters: 
-                if -1 in fil_frame[self.gflg_key].tolist(): 
-                    fil_frame = fil_frame[(np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.) | (fil_frame[self.gflg_key]==0)]
-                else: fil_frame = fil_frame[fil_frame[self.gflg_key]==0]
-            if "b" in self.filters: fil_frame = fil_frame[(fil_frame.p_l>3.) & (fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
-            if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>500.]
-            if "d" in self.filters:
-                max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
-                                               np.diff([tw[0]] + fil_frame.time.tolist() + [tw[1]])]))
-                logger.info(f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}")
-                self.log += f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}\n"
-                if (len(fil_frame) < nechoes) or (max_tdiff >= self.max_tdiff): add_frame = False
-            if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
+            if len(fil_frame) > 0:
+                nechoes = self.cacl_nechoes(fil_frame.intt.mean())
+                if "a" in self.filters: 
+                    if -1 in fil_frame[self.gflg_key].tolist(): 
+                        fil_frame = fil_frame[(np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.) | (fil_frame[self.gflg_key]==0)]
+                    else: fil_frame = fil_frame[fil_frame[self.gflg_key]==0]
+                if "b" in self.filters: fil_frame = fil_frame[(fil_frame.p_l>3.) & (fil_frame.v_e<=100.) & (fil_frame.w_l_e<=100.)]
+                if "c" in self.filters: fil_frame = fil_frame[fil_frame.srange>500.]
+                # Might need to change comment this part and use only range-cell based filter
+                if "d" in self.filters:
+                    max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
+                                                   np.diff([tw[0]] + fil_frame.time.tolist() + [tw[1]])]))
+                    logger.info(f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}")
+                    self.log += f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}\n"
+                    if (len(fil_frame) < nechoes) or (max_tdiff >= self.max_tdiff): add_frame = False
+                if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
         self.log += f" RBSP total data after filter {len(self.fil_frame)}\n"
         
