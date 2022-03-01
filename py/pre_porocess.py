@@ -450,7 +450,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=20)
+    DataFetcherFilter(run_first=147)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
 #     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
