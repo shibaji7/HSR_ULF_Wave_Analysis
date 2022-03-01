@@ -1,18 +1,20 @@
 {
-    "run_id": 4,
+    "run_id": 7,
     "filter": {
         "hour_win": 1,
         "gflg_key": "gflg", 
-        "w_mins": 30,
+        "w_mins": 10,
         "param": "v", 
         "ts": 18,
-        "nechoe": 140,
+        "min_no_echoes": 60,
+        "min_pct_echoes": 0.5,
         "max_tdiff": 6,
         "fit": { 
             "kind": "linear",
             "dod": 2,
             "sig": 0.025
-        }
+        },
+        "fft_amp_norm": false
     },
     "save": {
         "raw": true,

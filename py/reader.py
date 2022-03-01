@@ -3,7 +3,7 @@
 """reader.py: read module for data post-processing and analsysis."""
 
 __author__ = "Chakraborty, S."
-__copyright__ = "Copyright 2022, SuperDARN@VT"
+__copyright__ = ""
 __credits__ = []
 __license__ = "MIT"
 __version__ = "1.0."
@@ -68,18 +68,20 @@ class Folder(object):
         self.filters[p] = []
         o = self.frames[p].copy()
         if len(o) > 0:
-            txs = o.Tx.unique()
-            for t in txs:
-                if p=="rsamp":
-                    times = o[o.Tx==t].time
-                    tmax, tmin = max(times), min(times)
-                else: tmax, tmin = None, None
-                beams = o[o.Tx==t].bmnum.unique()
-                for b in beams:
-                    gates = o[(o.Tx==t) & (o.bmnum==b)].slist.unique()
-                    for g in gates:
+            beams = list(o.bmnum.unique())
+            beams.sort()
+            for b in beams:
+                gates = list(o[o.bmnum==b].slist.unique())
+                gates.sort()
+                for g in gates:
+                    txs = list(o[(o.bmnum==b) & (o.slist==g)].Tx)
+                    for t in txs:
+                        if p=="rsamp":
+                            times = list(o[(o.bmnum==b) & (o.slist==g) & (o.Tx==t)].time)
+                            tmax, tmin = max(times), min(times)
+                        else: tmax, tmin = None, None
                         obj = {"Tx": t, "beam": b, "gate":g, "tmax":tmax, "tmin":tmin}
-                    self.filters[p].append(obj)
+                        self.filters[p].append(obj)
         return
 
 class Reader(object):
@@ -180,17 +182,17 @@ if __name__ == "__main__":
     # Read all the files with selected index by passing selected list index
     r.parse_files(select=[select_row])
     # Fetch FFT data by beam, gate, and Tx count
-    of = r.file_entries[select_row].get_data(p="fft", beams=[7], gates=[30], Tx=[4])
+    of = r.file_entries[select_row].get_data(p="fft", beams=[7], gates=[29], Tx=[5])
     print(of.head())
     # Fetch resample data by beam, time interval
-    ox = r.file_entries[select_row].get_data(p="rsamp", beams=[7], gates=[30], Tx=[4])
+    ox = r.file_entries[select_row].get_data(p="rsamp", beams=[7], gates=[29], Tx=[5])
     print(ox.head())
     # Stack plots
     frames = [
-        {"p": "rsamp", "df": ox, "title": "Rad: CLY, Beam 7, Gate 33, Tx 2, RSamp"},
-        {"p": "fft", "df": of, "title": "Rad: CLY, Beam 7, Gate 33, Tx 2, FFT"}, 
+        {"p": "rsamp", "df": ox, "title": "Rad: CLY, Beam 7, Gate 29, Tx 4, RSamp"},
+        {"p": "fft", "df": of, "title": "Rad: CLY, Beam 7, Gate 29, Tx 4, FFT"}, 
     ]
     r.generate_stacks(frames, r.get_stackplot_fname(select_row))
     # ptint selection criteria
     filt_dict = r.file_entries[select_row].filters
-    print(filt_dict)
+    #print(filt_dict)

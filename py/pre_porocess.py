@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-"""analysis.py: analysis module for data processing and analsysis."""
+"""pre_process.py: analysis module for data processing and analsysis."""
 
 __author__ = "Chakraborty, S."
-__copyright__ = "Copyright 2021, SuperDARN@VT"
+__copyright__ = ""
 __credits__ = []
 __license__ = "MIT"
 __version__ = "1.0."
@@ -78,7 +78,8 @@ class Filter(object):
     """
     
     def __init__(self, rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=None, 
-                 gflg_key=None, w_mins=None, param=None, ts=None, nechoe=None, max_tdiff=None):
+                 gflg_key=None, w_mins=None, param=None, ts=None, min_no_echoes=None, 
+                 min_pct_echoes=None, max_tdiff=None):
         """
         Parameters
         ----------
@@ -91,7 +92,8 @@ class Filter(object):
         w_mins - Minute window
         param - parameter to be detrend
         ts - Sampling time interval for interpolation
-        nechoe - Number of echoes per hour window per cell
+        min_no_echoes - Number of echoes per hour window per cell
+        min_pct_echoes - Minimum precentage of echoes per hour window per cell
         """
         self.proc_start_time = time.time()
         self.load_params(dates)
@@ -103,7 +105,8 @@ class Filter(object):
         if gflg_key is not None: self.gflg_key = gflg_key
         if w_mins is not None: self.w_mins = w_mins
         if param is not None: self.param = param
-        if nechoe is not None: self.nechoe = nechoe
+        if min_no_echoes is not None: self.min_no_echoes = min_no_echoes
+        if min_pct_echoes is not None: self.min_pct_echoes = min_pct_echoes
         if ts is not None: self.ts = ts
         hdw_data = pydarn.read_hdw_file(self.rad)
         self.lats, self.lons = pydarn.radar_fov(hdw_data.stid, coords="geo")
@@ -111,6 +114,17 @@ class Filter(object):
         self._fetch()
         self._filter()
         return
+    
+    def cacl_nechoes(self, intt):
+        """
+        For each hour interval caclulate minimum number of echoes
+        Parameters
+        ----------
+        intt: Integration time in sec
+        """
+        nechoes = int(self.min_pct_echoes * 3600./(6.*intt))
+        nechoes = self.min_no_echoes if nechoes > self.min_no_echoes else nechoes
+        return nechoes
     
     def load_params(self, dates):
         """
@@ -145,12 +159,14 @@ class Filter(object):
         self.fd = FetchData(self.rad, dates)
         _, scans = self.fd.fetch_data(by="scan")
         self.frame = self.fd.scans_to_pandas(scans)
-        self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
-        if "ribiero" in self.gflg_key: 
-            self.log += f" Modify GS flag.\n"
-            logger.info(f" Modify GS flag.")
-            self.db = DBScan(self.frame.copy())
-            self.frame = self.db.frame.copy()
+        if len(self.frame) > 0:
+            self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
+            self.frame["intt"] = self.frame["intt.sc"] + 1.e-6*self.frame["intt.us"]
+            if "ribiero" in self.gflg_key: 
+                self.log += f" Modify GS flag.\n"
+                logger.info(f" Modify GS flag.")
+                self.db = DBScan(self.frame.copy())
+                self.frame = self.db.frame.copy()
         return
     
     def _filter(self):
@@ -173,6 +189,7 @@ class Filter(object):
             fil_frame = self.frame.copy()
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=tw[0]) & (fil_frame.time<tw[1])]
+            nechoes = self.cacl_nechoes(fil_frame.intt.mean())
             if "a" in self.filters: 
                 if -1 in fil_frame[self.gflg_key].tolist(): 
                     fil_frame = fil_frame[(np.abs(fil_frame.v)>=50.) | (fil_frame.w_l>=50.) | (fil_frame[self.gflg_key]==0)]
@@ -182,8 +199,9 @@ class Filter(object):
             if "d" in self.filters:
                 max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
                                                np.diff([tw[0]] + fil_frame.time.tolist() + [tw[1]])]))
-                logger.info(f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- {len(fil_frame)} & max(td)-{max_tdiff}")
-                if (len(fil_frame) < self.nechoe) or (max_tdiff >= self.max_tdiff): add_frame = False
+                logger.info(f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}")
+                self.log += f"DLen of {tw[0].strftime('%Y.%m.%dT%H.%M')}-{tw[1].strftime('%Y.%m.%dT%H.%M')} -hour- (NE:{nechoes}) {len(fil_frame)} & max(td)-{max_tdiff}\n"
+                if (len(fil_frame) < nechoes) or (max_tdiff >= self.max_tdiff): add_frame = False
             if add_frame: self.fil_frame = pd.concat([self.fil_frame, fil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
         self.log += f" RBSP total data after filter {len(self.fil_frame)}\n"
@@ -216,35 +234,43 @@ class Filter(object):
         tx = 1
         for tx, tw in enumerate(time_windows):
             self.log += f" Time window DIF Op: {tw}\n"
-            ne = int(self.nechoe * (tw[1]-tw[0]).total_seconds()/(3600.*self.hour_win))
             for b in beams:
                 for r in gates:
-                    self.log += f" Beam-Gate DIF Op: {b}, {r}\n"
+                    self.log += f" Beam-Gate DIF Op: {b}, {r} "
                     add_frame = True
                     o = self.d_frame[(self.d_frame.bmnum == b) & (self.d_frame.slist == r) &
-                                       (self.d_frame.time>=tw[0]) & (self.d_frame.time<tw[1])]
-                    self.log += f" Compare DIF Op [ne.len(o)]: {ne}, {len(o)}\n"
-                    if len(o) >= ne:
-                        tdiff = (tw[1]-tw[0]).total_seconds()/(3600.)
-                        x, y = np.array(o.time.apply(lambda t: t.hour*3600 + 
-                                                     t.minute*60 + t.second)), np.array(o[self.param])
-                        x, y = x[~np.isnan(y)], y[~np.isnan(y)]
-                        start = o.time.tolist()[0]
-                        xnew = [x[0]+(i*self.ts) for i in range(int(200*tdiff))]
-                        tnew = [start+dt.timedelta(seconds=i*self.ts) for i in range(int(200*tdiff))]
-                        f = interp1d(x, y, kind=self.fit["kind"], bounds_error=False, fill_value="extrapolate")
-                        ynew = f(xnew)
-                        o = pd.DataFrame()
-                        o["time"], o["bmnum"], o["slist"] = tnew, b, r
-                        o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew
-                        o[self.param+".dof"], o[self.param+".sig"] = len(x)-self.fit["dod"], self.fit["sig"]
-                        sprd, ta = self.estimate_spred(f, x, y, xnew)
-                        o[self.param+".sprd"] = sprd*ta
-                        o[self.param+".ub"], o[self.param+".lb"] = ynew + sprd*ta, ynew - sprd*ta
-                        o["Tx"] = tx
-                        self.r_frame = pd.concat([self.r_frame, o])
-                        fft = self.__run_fft__(o, b, r, tx)
-                        self.fft_frame = pd.concat([self.fft_frame, fft])
+                                     (self.d_frame.time>=tw[0]) & (self.d_frame.time<tw[1])]
+                    if "d" in self.filters:
+                        max_tdiff = np.rint(np.nanmax([t.total_seconds()/60. for t in 
+                                                       np.diff([tw[0]] + o.time.tolist() + [tw[1]])]))
+                        if (max_tdiff >= self.max_tdiff): add_frame = False
+                        self.log += f" Max(td)-{max_tdiff}\n"
+                    if (len(o) > 0) and add_frame:
+                        nechoes = self.cacl_nechoes(o.intt.mean())
+                        nechoes = int(nechoes * (tw[1]-tw[0]).total_seconds()/(3600.*self.hour_win))
+                        self.log += f" Compare DIF Op [ne.len(o)]: {nechoes}, {len(o)}\n"
+                        if len(o) >= nechoes:
+                            intt = o.intt.mean()
+                            tdiff = (tw[1]-tw[0]).total_seconds()/(3600.)
+                            x, y = np.array(o.time.apply(lambda t: t.hour*3600 + 
+                                                         t.minute*60 + t.second)), np.array(o[self.param])
+                            x, y = x[~np.isnan(y)], y[~np.isnan(y)]
+                            start = o.time.tolist()[0]
+                            xnew = [x[0]+(i*self.ts) for i in range(int(200*tdiff))]
+                            tnew = [start+dt.timedelta(seconds=i*self.ts) for i in range(int(200*tdiff))]
+                            f = interp1d(x, y, kind=self.fit["kind"], bounds_error=False, fill_value="extrapolate")
+                            ynew = f(xnew)
+                            o = pd.DataFrame()
+                            o["time"], o["bmnum"], o["slist"] = tnew, b, r
+                            o["hour"], o[self.param] = np.array([1] + [0]*(len(o)-1)), ynew
+                            o[self.param+".dof"], o[self.param+".sig"] = len(x)-self.fit["dod"], self.fit["sig"]
+                            sprd, ta = self.estimate_spred(f, x, y, xnew)
+                            o[self.param+".sprd"] = sprd*ta
+                            o[self.param+".ub"], o[self.param+".lb"] = ynew + sprd*ta, ynew - sprd*ta
+                            o["intt"], o["Tx"] = intt, tx
+                            self.r_frame = pd.concat([self.r_frame, o])
+                            fft = self.__run_fft__(o, b, r, tx)
+                            self.fft_frame = pd.concat([self.fft_frame, fft])
         if len(self.r_frame) > 0: 
             self.log += f" Manipulate location information.\n"
             self.r_frame["rad"] = self.rad
@@ -276,7 +302,9 @@ class Filter(object):
         """
         fft = pd.DataFrame()
         n = len(o)
-        Baf = 2.0/n * rfft(np.array(o[self.param])*get_window("hanning",Nx=n))
+        self.log += f" Applying normalization in FFT\n" if self.fft_amp_norm else f" No normalization in FFT\n"
+        if self.fft_amp_norm: Baf = 2.0/n * rfft(np.array(o[self.param])*get_window("hanning",Nx=n))
+        else: Baf = rfft(np.array(o[self.param])*get_window("hanning",Nx=n))
         frq = rfftfreq(n, self.ts)
         fft["frq"] = frq
         fft[self.param+"_real"], fft[self.param+"_imag"] = np.real(Baf), np.imag(Baf)
@@ -351,7 +379,7 @@ class Filter(object):
     
     @staticmethod
     def filter_data_by_detrending(rad, dates, beams, filters=["a", "b", "c", "d"], hour_win=1., 
-                                  gflg_key="gflg", w_mins=15., param="v", rclist=[], nechoe=70):
+                                  gflg_key="gflg", w_mins=15., param="v", rclist=[], min_no_echoes=60):
         """
         Parameters
         ----------
@@ -365,7 +393,7 @@ class Filter(object):
         param - parameter to be detrend
         rclist - list of range cell plots
         """
-        f = Filter(rad, dates, beams, filters, hour_win, gflg_key, w_mins, param, nechoe=nechoe)
+        f = Filter(rad, dates, beams, filters, hour_win, gflg_key, w_mins, param, min_no_echoes=min_no_echoes)
         f._plots(rclist=rclist)
         f._save()
         return f
@@ -422,11 +450,11 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=147)
+    DataFetcherFilter(run_first=20)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
 #     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
 #                                     hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"}, 
 #                                                           {"bmnum":12, "gate":15, "color":"b"}],
-#                                     nechoe=70)
+#                                     min_no_echoes=60)
     pass

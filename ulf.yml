@@ -59,4 +59,5 @@ dependencies:
     - pydarn==2.1
     - pydarnio==1.1.0
     - pyyaml==6.0
+    - scienceplots==1.0.9
     - tables==3.6.1

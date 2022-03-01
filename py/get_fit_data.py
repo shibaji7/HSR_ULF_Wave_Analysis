@@ -3,7 +3,7 @@
 """get_fit_data.py: utility module to fetch fitacf<v> level data."""
 
 __author__ = "Chakraborty, S."
-__copyright__ = "Copyright 2020, SuperDARN@VT"
+__copyright__ = ""
 __credits__ = []
 __license__ = "MIT"
 __version__ = "1.0."
@@ -223,7 +223,7 @@ class FetchData(object):
         return _b, _s
     
     def convert_to_pandas(self, beams, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time",
-                                                "rsep", "frang"],
+                                                "rsep", "frang", "intt.sc", "intt.us"],
                           v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "w_l_e"]):
         """
         Convert the beam data into dataframe
@@ -242,7 +242,8 @@ class FetchData(object):
                 _o[p].extend([np.nan]*(L-l))
         return pd.DataFrame.from_records(_o)
     
-    def scans_to_pandas(self, scans, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time", "rsep", "frang"], 
+    def scans_to_pandas(self, scans, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
+                                               "time", "rsep", "frang", "intt.sc", "intt.us"],
                         v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "w_l_e"], start_scnum=0):
         """
         Convert the scan data into dataframe
@@ -263,8 +264,9 @@ class FetchData(object):
                     _o[p].extend([np.nan]*(L-l))
         return pd.DataFrame.from_records(_o)
     
-    def pandas_to_beams(self, df, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time"],
-            v_params=["v", "w_l", "gflg", "p_l", "slist"]):
+    def pandas_to_beams(self, df, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
+                                            "time", "intt.sc", "intt.us"],
+                        v_params=["v", "w_l", "gflg", "p_l", "slist"]):
         """
         Convert the dataframe to beam
         """
@@ -279,8 +281,9 @@ class FetchData(object):
             beams.append(b)
         return beams
     
-    def pandas_to_scans(self, df, smode, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time"],
-            v_params=["v", "w_l", "gflg", "p_l", "slist"]):
+    def pandas_to_scans(self, df, smode, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
+                                                   "time", "intt.sc", "intt.us"],
+                        v_params=["v", "w_l", "gflg", "p_l", "slist"]):
         """
         Convert the dataframe to scans
         """
