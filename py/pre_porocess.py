@@ -251,8 +251,8 @@ class Filter(object):
                         nechoes = self.cacl_nechoes(o.intt.mean())
                         nechoes = int(nechoes * (tw[1]-tw[0]).total_seconds()/(3600.*self.hour_win))
                         self.log += f" Compare DIF Op [ne.len(o)]: {nechoes}, {len(o)}\n"
-                        if len(o) >= nechoes:
-                            intt = o.intt.mean()
+                        if len(o) >= nechoes: 
+                            Lx, intt = len(o), o.intt.mean()
                             tdiff = (tw[1]-tw[0]).total_seconds()/(3600.)
                             x, y = np.array(o.time.apply(lambda t: t.hour*3600 + 
                                                          t.minute*60 + t.second)), np.array(o[self.param])
@@ -270,8 +270,9 @@ class Filter(object):
                             o[self.param+".sprd"] = sprd*ta
                             o[self.param+".ub"], o[self.param+".lb"] = ynew + sprd*ta, ynew - sprd*ta
                             o["intt"], o["Tx"] = intt, tx
+                            o["nechoes"], o["len"], o["res.nechoes"] = nechoes, Lx, len(ynew)
                             self.r_frame = pd.concat([self.r_frame, o])
-                            fft = self.__run_fft__(o, b, r, tx)
+                            fft = self.__run_fft__(o, b, r, tx, nechoes, Lx, len(ynew))
                             self.fft_frame = pd.concat([self.fft_frame, fft])
         if len(self.r_frame) > 0: 
             self.log += f" Manipulate location information.\n"
@@ -298,7 +299,7 @@ class Filter(object):
         row["mlat"], row["mlon"], row["mlt"] = aacgmv2.get_aacgm_coord(lat, lon, 300, row["time"])
         return row
     
-    def __run_fft__(self, o, b, r, tx):
+    def __run_fft__(self, o, b, r, tx, ne, Lx, res):
         """
         Run FFT on velocity data
         """
@@ -313,6 +314,7 @@ class Filter(object):
         fft["amp"], fft["ang"] = np.absolute(Baf), np.angle(Baf, deg=True)
         fft["bmnum"], fft["slist"], fft["rad"] = b, r, self.rad
         fft["Tx"] = tx
+        fft["nechoes"], fft["len"], fft["res.nechoes"] = ne, Lx, res
         return fft
     
     def __trnd_support__(self, row):
