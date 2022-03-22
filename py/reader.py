@@ -74,7 +74,7 @@ class Folder(object):
                 gates = list(o[o.bmnum==b].slist.unique())
                 gates.sort()
                 for g in gates:
-                    txs = list(o[(o.bmnum==b) & (o.slist==g)].Tx)
+                    txs = list(o[(o.bmnum==b) & (o.slist==g)].Tx.unique())
                     for t in txs:
                         if p=="rsamp":
                             times = list(o[(o.bmnum==b) & (o.slist==g) & (o.Tx==t)].time)
