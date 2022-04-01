@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """post_process.py: analysis module for data post processing and analsysis."""
 
-__author__ = ""
+__author__ = "Shi, S."
 __copyright__ = ""
 __credits__ = []
 __license__ = "MIT"
