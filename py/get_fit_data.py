@@ -220,10 +220,10 @@ class FetchData(object):
                 else: sc.beams.append(d)
             _s.append(sc)
             if self.verbose: logger.info("Converted to scan data.")
-        return _b, _s
+        return _b, _s, True
     
     def convert_to_pandas(self, beams, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", "time",
-                                                "rsep", "frang", "intt.sc", "intt.us"],
+                                                "rsep", "frang", "intt.sc", "intt.us", "cp"],
                           v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "w_l_e"]):
         """
         Convert the beam data into dataframe
@@ -243,7 +243,7 @@ class FetchData(object):
         return pd.DataFrame.from_records(_o)
     
     def scans_to_pandas(self, scans, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
-                                               "time", "rsep", "frang", "intt.sc", "intt.us"],
+                                               "time", "rsep", "frang", "intt.sc", "intt.us", "cp"],
                         v_params=["v", "w_l", "gflg", "p_l", "slist", "v_e", "w_l_e"], start_scnum=0):
         """
         Convert the scan data into dataframe
@@ -265,7 +265,7 @@ class FetchData(object):
         return pd.DataFrame.from_records(_o)
     
     def pandas_to_beams(self, df, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
-                                            "time", "intt.sc", "intt.us"],
+                                            "time", "intt.sc", "intt.us", "cp"],
                         v_params=["v", "w_l", "gflg", "p_l", "slist"]):
         """
         Convert the dataframe to beam
@@ -282,7 +282,7 @@ class FetchData(object):
         return beams
     
     def pandas_to_scans(self, df, smode, s_params=["bmnum", "noise.sky", "tfreq", "scan", "nrang", 
-                                                   "time", "intt.sc", "intt.us"],
+                                                   "time", "intt.sc", "intt.us", "cp"],
                         v_params=["v", "w_l", "gflg", "p_l", "slist"]):
         """
         Convert the dataframe to scans
@@ -316,8 +316,10 @@ class FetchData(object):
             reader = pydarn.SDarnRead(fs, True)
             records = reader.read_fitacf()
             data += records
-        if by is not None: data = self._parse_data(data, s_params, v_params, by, scan_prop)
-        return data
+        if (by is not None) and (len(data) > 0): 
+            data = self._parse_data(data, s_params, v_params, by, scan_prop)
+            return data
+        else: return (None, None, False)
     
 if __name__ == "__main__":
     fdata = FetchData( "sas", [dt.datetime(2015,3,17,3),

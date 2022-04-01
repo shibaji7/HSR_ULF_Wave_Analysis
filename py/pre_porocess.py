@@ -112,7 +112,7 @@ class Filter(object):
         self.lats, self.lons = pydarn.radar_fov(hdw_data.stid, coords="geo")
         self.log = f" Done initialization: {self.rad}, {self.dates}\n"
         self._fetch()
-        self._filter()
+        if self.data_exists: self._filter()
         return
     
     def cacl_nechoes(self, intt):
@@ -136,6 +136,7 @@ class Filter(object):
         setattr(self, "run_id", o["run_id"])
         setattr(self, "save", o["save"])
         setattr(self, "files", o["files"])
+        setattr(self, "ftype", o["ftype"])
         self.dirs = {}
         base = self.files["base"].format(run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d"))
         if not os.path.exists(base): os.system("mkdir -p "+base)
@@ -151,22 +152,23 @@ class Filter(object):
         """
         self.log += " Fetching data...\n"
         dates = [
-                    self.dates[0]-dt.timedelta(minutes=self.w_mins/2),
-                    self.dates[1]+dt.timedelta(minutes=self.w_mins/2)
-                ] if self.w_mins is not None else self.dates
+                self.dates[0]-dt.timedelta(minutes=self.w_mins/2),
+                self.dates[1]+dt.timedelta(minutes=self.w_mins/2)
+            ] if self.w_mins is not None else self.dates
         logger.info(f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}")
         self.log += f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}\n"
-        self.fd = FetchData(self.rad, dates)
-        _, scans = self.fd.fetch_data(by="scan")
-        self.frame = self.fd.scans_to_pandas(scans)
-        if len(self.frame) > 0:
-            self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
-            self.frame["intt"] = self.frame["intt.sc"] + 1.e-6*self.frame["intt.us"]
-            if "ribiero" in self.gflg_key: 
-                self.log += f" Modify GS flag.\n"
-                logger.info(f" Modify GS flag.")
-                self.db = DBScan(self.frame.copy())
-                self.frame = self.db.frame.copy()
+        self.fd = FetchData(self.rad, dates, ftype=self.ftype)
+        _, scans, self.data_exists = self.fd.fetch_data(by="scan")
+        if self.data_exists:
+            self.frame = self.fd.scans_to_pandas(scans)
+            if len(self.frame) > 0:
+                self.frame["srange"] = self.frame.frang + (self.frame.slist*self.frame.rsep)
+                self.frame["intt"] = self.frame["intt.sc"] + 1.e-6*self.frame["intt.us"]
+                if "ribiero" in self.gflg_key: 
+                    self.log += f" Modify GS flag.\n"
+                    logger.info(f" Modify GS flag.")
+                    self.db = DBScan(self.frame.copy())
+                    self.frame = self.db.frame.copy()
         return
     
     def _filter(self):
@@ -189,7 +191,9 @@ class Filter(object):
             fil_frame = self.frame.copy()
             fil_frame = fil_frame[fil_frame.bmnum.isin(self.beams)]
             fil_frame = fil_frame[(fil_frame.time>=tw[0]) & (fil_frame.time<tw[1])]
-            if len(fil_frame) > 0:
+            unique_cpid = np.unique(fil_frame.cp)
+            cpid_check = all(item in self.cpids for item in unique_cpid)
+            if cpid_check and (len(fil_frame) > 0):
                 nechoes = self.cacl_nechoes(fil_frame.intt.mean())
                 if "a" in self.filters: 
                     if -1 in fil_frame[self.gflg_key].tolist(): 
@@ -398,8 +402,9 @@ class Filter(object):
         rclist - list of range cell plots
         """
         f = Filter(rad, dates, beams, filters, hour_win, gflg_key, w_mins, param, min_no_echoes=min_no_echoes)
-        f._plots(rclist=rclist)
-        f._save()
+        if f.data_exists: 
+            f._plots(rclist=rclist)
+            f._save()
         return f
     
 class DataFetcherFilter(object):
@@ -434,7 +439,7 @@ class DataFetcherFilter(object):
             rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
             logger.info(f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}")
             f = Filter(rad, dates, beams)
-            f._save()
+            if f.data_exists: f._save()
         return f
     
     def _run(self):

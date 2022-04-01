@@ -1,5 +1,6 @@
 {
-    "run_id": 8,
+    "run_id": 9,
+    "ftype": "fitacf3",
     "filter": {
         "hour_win": 1,
         "gflg_key": "gflg", 
@@ -14,7 +15,8 @@
             "dod": 2,
             "sig": 0.025
         },
-        "fft_amp_norm": false
+        "fft_amp_norm": false,
+        "cpids": [200, 201, 210, 220, 230]
     },
     "save": {
         "raw": true,
