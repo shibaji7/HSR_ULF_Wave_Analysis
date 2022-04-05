@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """post_process.py: analysis module for data post processing and analsysis."""
 
-__author__ = "Shi, S."
+__author__ = "Shi, X."
 __copyright__ = ""
 __credits__ = []
 __license__ = "MIT"
@@ -13,6 +13,7 @@ __status__ = "Research"
 import os
 import sys
 import numpy as np
+from scipy import stats
 from scipy.signal import find_peaks, peak_widths
 sys.path.extend(["py/"])
 
@@ -67,3 +68,22 @@ def narrowband_wave_finder(freqs,psd,fl_s=0.0016,fh_s=0.0067,fl_t=0.000278,fh_t=
             S_total = np.trapz(psd_total, dx=f_res)
             I_sig = S_sig/S_total
             return FWHM,results_half[2][0],results_half[3][0], peak_psd_max,peak_freq,S_sig,S_total,I_sig
+
+def despike_mad(data,num=6, scale='normal'):
+    """ 
+    despike a time series based on median absolute deviation
+    inputs: 
+    data: data to be despiked
+    num: number of median absoute deviations for despiking, default is 6
+    
+    outputs: 
+    good_data: good data with outliers removed
+    good_ind: index of good data in the original data
+    """
+    mad = stats.median_abs_deviation(data, scale=scale)
+    median_data = np.median(data)
+
+    good_ind = (data <= median_data + mad*num) & (data >= median_data - mad*num)
+    good_data = data[good_ind]
+    
+    return good_data, good_ind
