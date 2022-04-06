@@ -42,7 +42,7 @@ def narrowband_wave_finder(freqs,psd,fl_s=0.0016,fh_s=0.0067,fl_t=0.000278,fh_t=
     peak_psd = psd[peaks]
     sig_ind = np.where((peak_f >= fl_s) & (peak_f <= fh_s))
     
-    if sig_ind == []:
+    if np.size(sig_ind) == 0:
         return None
     else:
         peak_sig = peaks[sig_ind]
