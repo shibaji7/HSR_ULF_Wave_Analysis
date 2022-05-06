@@ -18,6 +18,20 @@ __status__ = "Research"
 
 import sys
 sys.path.extend(["py/"])
+import pyIGRF
+
+def compute_B_field(location, date, kind="igrf", Re=6371.0, B0=3.12*1e-5):
+    B = {}
+    if kind == "igrf": 
+        r, theta_lat, phi_lon = location[0], location[1], location[2]
+        B["d"], B["i"], B["h"], B["t"], B["p"],\
+            B["r"], B["b"] = pyIGRF.igrf_value(theta_lat, phi_lon, r, date)
+    elif kind == "dipole":        
+        r, theta_lat = location[0], location[1]
+        B["r"] = -2 * B0 * (Re/r)**3 * np.cos(np.deg2rad(theta_lat))
+        B["t"] = -B0 * (Re/r)**3 * np.sin(np.deg2rad(theta_lat))
+        B["b"] = np.sqrt(B["r"]**2 + B["t"]**2)
+    return B
 
 class ComputeIonosphereicProperties(object):
     """
@@ -35,12 +49,18 @@ class ComputeIonosphereicProperties(object):
         Parameters:
         ----------
         """
+        self.Re = 6371.0
         return
     
-    def get_magnetic_field_info(self):
+    def get_magnetic_field_info(self, locations, dates, kind="igrf"):
         """
+        Get magnetic field information based on location and 
+        magnetic model type [igrf/dipole].
         """
-        return
+        Bfields = []
+        for location, date in zip(locations, dates):
+            Bfields.append(compute_B_field(location, date))
+        return Bfields
 
     def compute_efield(self):
         """
