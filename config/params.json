@@ -1,35 +1,45 @@
 {
-    "run_id": 9,
-    "ftype": "fitacf3",
-    "filter": {
-        "hour_win": 1,
-        "gflg_key": "gflg", 
-        "w_mins": 10,
-        "param": "v", 
-        "ts": 18,
-        "min_no_echoes": 60,
-        "min_pct_echoes": 0.5,
-        "max_tdiff": 6,
-        "fit": { 
-            "kind": "linear",
-            "dod": 2,
-            "sig": 0.025
-        },
-        "fft_amp_norm": false,
-        "cpids": [200, 201, 210, 220, 230]
+  "run_id": 10,
+  "ftype": "fitacf3",
+  "stage_arc": false,
+  "remove_local": false,
+  "filter": {
+    "hour_win": 1,
+    "gflg_key": "gflg",
+    "w_mins": 10,
+    "param": "v",
+    "ts": 18,
+    "min_no_echoes": 60,
+    "min_pct_echoes": 0.5,
+    "max_tdiff": 6,
+    "fit": {
+      "kind": "linear",
+      "dod": 2,
+      "sig": 0.025
     },
-    "save": {
-        "raw": true,
-        "dtrnd": true,
-        "rsamp": true,
-        "fft": true,
-        "log": true,
-        "param": true
-    },
-    "files": {
-        "base": "tmp/sd.run.{run_id}/{date}/",
-        "csv": "{rad}_{stime}_{etime}_%s.csv",
-        "log": "{rad}_{stime}_{etime}_%s.log",
-        "rti_plot": "{rad}_{bm}_{stime}_{etime}.png"
-    }
+    "fft_amp_norm": false,
+    "cpids": [
+      200,
+      201,
+      210,
+      220,
+      230
+    ]
+  },
+  "save": {
+    "raw": true,
+    "fill": true,
+    "dtrnd": true,
+    "rsamp": true,
+    "fft": true,
+    "log": true,
+    "param": true
+  },
+  "files": {
+    "base": "tmp/sd.run.{run_id}/{date}/",
+    "arc_base": "LFS/HSR_ULF_WAVE/sd.run.{run_id}/{date}/",
+    "csv": "{rad}_{stime}_{etime}_%s.csv",
+    "log": "{rad}_{stime}_{etime}_%s.log",
+    "rti_plot": "{rad}_{bm}_{stime}_{etime}.png"
+  }
 }

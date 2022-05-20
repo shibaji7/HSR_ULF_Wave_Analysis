@@ -33,7 +33,7 @@ class Folder(object):
     """
 
     def __init__(
-        self, dirs, rad, stime, etime, params=["raw", "dtrnd", "rsamp", "fft"]
+        self, dirs, rad, stime, etime, params=["raw", "fill", "dtrnd", "rsamp", "fft"]
     ):
         self.rad = rad
         self.stime = stime

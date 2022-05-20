@@ -12,7 +12,6 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-import utils
 from get_fit_data import FetchData
 from plots import RangeTimeIntervalPlot as RTI
 import pydarn
@@ -26,48 +25,15 @@ from scipy.interpolate import interp1d
 import json
 from functools import partial
 import multiprocessing as mp
-from sklearn.cluster import DBSCAN
 import pandas as pd
 import numpy as np
 import datetime as dt
 from loguru import logger
-
 import os
 import sys
 
 sys.path.extend(["py/"])
-
-
-class DBScan(object):
-    """Class to cluster 2D or 3D data"""
-
-    def __init__(
-        self, frame, params={"eps_g": 1, "eps_s": 1, "min_samples": 10, "eps": 1}
-    ):
-        self.frame = frame
-        for k in params.keys():
-            setattr(self, k, params[k])
-        self.run_2D_cluster_bybeam()
-        return
-
-    def run_2D_cluster_bybeam(self):
-        o = pd.DataFrame()
-        for b in np.unique(self.frame.bmnum):
-            _o = self.frame[self.frame.bmnum == b]
-            _o.slist, _o.scnum, eps, min_samples = (
-                _o.slist / self.eps_g,
-                _o.scnum / self.eps_s,
-                self.eps,
-                self.min_samples,
-            )
-            ds = DBSCAN(eps=self.eps, min_samples=min_samples).fit(
-                _o[["slist", "scnum"]].values
-            )
-            _o["cluster_tag"] = ds.labels_
-            _o = utils._run_riberio_threshold_on_rad(_o)
-            o = pd.concat([o, _o])
-        self.frame = o.sort_values("time").copy()
-        return
+import utils
 
 
 class Filter(object):
@@ -168,16 +134,23 @@ class Filter(object):
         setattr(self, "save", o["save"])
         setattr(self, "files", o["files"])
         setattr(self, "ftype", o["ftype"])
+        setattr(self, "stage_arc", o["stage_arc"])
+        setattr(self, "remove_local", o["remove_local"])
         self.dirs = {}
-        base = self.files["base"].format(
+        self.base = self.files["base"].format(
             run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
         )
-        if not os.path.exists(base):
-            os.system("mkdir -p " + base)
-        for p in ["raw", "dtrnd", "rsamp", "fft"]:
-            self.dirs[p] = base + self.files["csv"] % (p)
-        self.dirs["log"] = base + self.files["log"] % ("log")
-        self.dirs["rti_plot"] = base + self.files["rti_plot"]
+        self.arc_base = self.files["arc_base"].format(
+            run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
+        )
+        if self.stage_arc:
+            self.base = self.arc_base
+        if not os.path.exists(self.base):
+            os.system("mkdir -p " + self.base)
+        for p in ["raw", "fill", "dtrnd", "rsamp", "fft"]:
+            self.dirs[p] = self.base + self.files["csv"] % (p)
+        self.dirs["log"] = self.base + self.files["log"] % ("log")
+        self.dirs["rti_plot"] = self.base + self.files["rti_plot"]
         return
 
     def _fetch(self):
@@ -185,34 +158,14 @@ class Filter(object):
         Fetch radar data from repository
         """
         self.log += " Fetching data...\n"
-        dates = (
-            [
-                self.dates[0] - dt.timedelta(minutes=self.w_mins / 2),
-                self.dates[1] + dt.timedelta(minutes=self.w_mins / 2),
-            ]
-            if self.w_mins is not None
-            else self.dates
-        )
         logger.info(
             f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}"
         )
         self.log += f" Read radar file {self.rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in self.dates]}\n"
-        self.fd = FetchData(self.rad, dates, ftype=self.ftype)
-        _, scans, self.data_exists = self.fd.fetch_data(by="scan")
-        if self.data_exists:
-            self.frame = self.fd.scans_to_pandas(scans)
-            if len(self.frame) > 0:
-                self.frame["srange"] = self.frame.frang + (
-                    self.frame.slist * self.frame.rsep
-                )
-                self.frame["intt"] = (
-                    self.frame["intt.sc"] + 1.0e-6 * self.frame["intt.us"]
-                )
-                if "ribiero" in self.gflg_key:
-                    self.log += f" Modify GS flag.\n"
-                    logger.info(f" Modify GS flag.")
-                    self.db = DBScan(self.frame.copy())
-                    self.frame = self.db.frame.copy()
+        stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
+        file = self.dirs["raw"].format(rad=self.rad, stime=stime, etime=etime)
+        self.frame = pd.read_csv(file, parse_dates=["time"])
+        self.data_exists = True if len(self.frame) > 0 else False
         return
 
     def _filter(self):
@@ -368,7 +321,11 @@ class Filter(object):
                                 )
                             ), np.array(o[self.param])
                             x, y = x[~np.isnan(y)], y[~np.isnan(y)]
-                            start = o.time.tolist()[0]
+                            ###
+                            # Reset 'Start' at the start of the time window
+                            # start = o.time.tolist()[0]
+                            ####
+                            start = tw[0]
                             xnew = [
                                 x[0] + (i * self.ts) for i in range(int(200 * tdiff))
                             ]
@@ -542,10 +499,10 @@ class Filter(object):
         """
         self.log += f" Done processing, saving data to csv and logs.\n"
         stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
-        for p in ["raw", "dtrnd", "rsamp", "fft"]:
+        for p in ["fill", "dtrnd", "rsamp", "fft"]:
             if self.save[p]:
                 file = self.dirs[p].format(rad=self.rad, stime=stime, etime=etime)
-                if p == "raw":
+                if p == "fill":
                     self.fil_frame.to_csv(
                         file, index=False, header=True, float_format="%g"
                     )
