@@ -31,9 +31,11 @@ import datetime as dt
 from loguru import logger
 import os
 import sys
+import swifter
 
 sys.path.extend(["py/"])
 import utils
+from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 
 class Filter(object):
@@ -130,6 +132,8 @@ class Filter(object):
             o = json.load(f)
         for k in o["filter"]:
             setattr(self, k, o["filter"][k])
+        for k in o["ionospheric_properties"]:
+            setattr(self, k, o["ionospheric_properties"][k])
         setattr(self, "run_id", o["run_id"])
         setattr(self, "save", o["save"])
         setattr(self, "files", o["files"])
@@ -316,7 +320,7 @@ class Filter(object):
                             Lx, intt = len(o), o.intt.mean()
                             tdiff = (tw[1] - tw[0]).total_seconds() / (3600.0)
                             x, y = np.array(
-                                o.time.apply(
+                                o.time.swifter.apply(
                                     lambda t: t.hour * 3600 + t.minute * 60 + t.second
                                 )
                             ), np.array(o[self.param])
@@ -369,7 +373,11 @@ class Filter(object):
         if len(self.r_frame) > 0:
             self.log += f" Manipulate location information.\n"
             self.r_frame["rad"] = self.rad
-            self.r_frame = self.r_frame.apply(self.__get_magnetic_loc__, axis=1)
+            self.r_frame = self.r_frame.swifter.apply(self.__get_magnetic_loc__, axis=1)
+            # Compute Electric field from resampled V_los
+            cip = CIP(self.r_frame, self.vel_key, self.Re, self.mag_type, self.B0)
+            cip.compute_efield()
+            self.r_frame = cip.df.copy()
         return
 
     def estimate_spred(self, f, x, y, xnew):
@@ -394,6 +402,7 @@ class Filter(object):
         row["mlat"], row["mlon"], row["mlt"] = aacgmv2.get_aacgm_coord(
             lat, lon, 300, row["time"]
         )
+        row["glat"], row["glon"] = lat, lon
         return row
 
     def __run_fft__(self, o, b, r, tx, ne, Lx, res):
