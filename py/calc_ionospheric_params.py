@@ -16,14 +16,16 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import numpy as np
 import pyIGRF
 import swifter
 import sys
+from loguru import logger
 
 sys.path.extend(["py/"])
 
 
-def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12 * 1e-5):
+def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
     """
     Parameters:
     ----------
@@ -33,9 +35,10 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12 * 1e-5):
     mag_type: Magnetic model type
     B0: Magnetic field on the surface of the earth near equator
     """
+    FACT = 180.0 / np.pi
     B = {}
     if mag_type == "igrf":
-        r, theta_lat, phi_lon = location[0] + Re, location[1], location[2]
+        r, theta_lat, phi_lon = location[0], location[1], location[2]
         B["d"], B["i"], B["h"], B["t"], B["p"], B["r"], B["b"] = pyIGRF.igrf_value(
             theta_lat, phi_lon, r, date.year
         )
@@ -49,8 +52,12 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12 * 1e-5):
     elif mag_type == "dipole":
         r, theta_lat = location[0] + Re, location[1]
         B["r"] = -2 * B0 * (Re / r) ** 3 * np.cos(np.deg2rad(theta_lat))
+        B["p"] = 0.0
         B["t"] = -B0 * (Re / r) ** 3 * np.sin(np.deg2rad(theta_lat))
         B["b"] = np.sqrt(B["r"] ** 2 + B["t"] ** 2)
+        B["h"] = np.sqrt(B["p"] ** 2 + B["t"] ** 2)
+        B["i"] = FACT * np.arctan2(B["r"], B["h"])
+        B["d"] = FACT * np.arctan2(B["p"], B["t"])
     return B
 
 
@@ -105,6 +112,11 @@ class ComputeIonosphereicProperties(object):
     def compute_efield(self):
         """
         Compute E=-(V X B).
+        Assumption:
+        -----------
+        1. Reflection is _|_ to B field.
+        2. Thus v_los is _|_ to B field.
+        3. -(V X B) = [|V|.|B| sin(t)]_t=90 = |V|.|B|.
         """
         func = (
             self.compute_from_vlos if self.vel_key == "vlos" else self.compute_from_vlos
@@ -112,7 +124,7 @@ class ComputeIonosphereicProperties(object):
         self.df = self.df.swifter.apply(func, axis=1)
         return
 
-    def compute_conducityvity_profile(self):
+    def compute_conductivity_profile(self):
         """ """
         return
 
@@ -123,3 +135,10 @@ class ComputeIonosphereicProperties(object):
     def compute_jule_heating(self):
         """ """
         return
+
+
+if __name__ == "__main__":
+    import datetime as dt
+
+    b = compute_B_field([0, 0, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
+    logger.info(f"B-field from dipole-{b}")
