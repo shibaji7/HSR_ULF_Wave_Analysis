@@ -13,14 +13,11 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-from py.reader import Reader
+from reader import Reader
 import os
-import sys
 import numpy as np
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
-
-sys.path.extend(["py/"])
 
 
 def narrowband_wave_finder(

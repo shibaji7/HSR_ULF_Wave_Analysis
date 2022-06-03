@@ -30,7 +30,7 @@
     "Re": 6371,
     "B0": 0.0000312,
     "methods": {
-      "e_field": "vlos",
+      "e_field": "v_vector",
       "mag_type": "igrf"
     }
   },

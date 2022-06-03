@@ -30,12 +30,9 @@ import numpy as np
 import datetime as dt
 from loguru import logger
 import os
-import sys
 import swifter
 
-sys.path.extend(["py/"])
 import utils
-from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 
 class Filter(object):
@@ -106,7 +103,7 @@ class Filter(object):
         if ts is not None:
             self.ts = ts
         hdw_data = pydarn.read_hdw_file(self.rad)
-        self.lats, self.lons = pydarn.radar_fov(hdw_data.stid, coords="geo")
+        self.lats, self.lons = pydarn.Coords.GEOGRAPHIC(hdw_data.stid)
         self.log = f" Done initialization: {self.rad}, {self.dates}\n"
         self._fetch()
         if self.data_exists:
@@ -374,12 +371,6 @@ class Filter(object):
             self.log += f" Manipulate location information.\n"
             self.r_frame["rad"] = self.rad
             self.r_frame = self.r_frame.swifter.apply(self.__get_magnetic_loc__, axis=1)
-            ####
-            ## Compute Electric field from resampled V_los
-            ##>> cip = CIP(self.r_frame, self.methods, self.Re, self.B0)
-            ##>> cip.compute_efield()
-            ##>> self.r_frame = cip.df.copy()
-            ####
         return
 
     def estimate_spred(self, f, x, y, xnew):
@@ -650,11 +641,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=11)
+    DataFetcherFilter(run_first=2)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
-    #     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],
-    #                                     hour_win=0.5, rclist=[{"bmnum":12, "gate":13, "color":"r"},
-    #                                                           {"bmnum":12, "gate":15, "color":"b"}],
-    #                                     min_no_echoes=60)
     pass

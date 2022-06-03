@@ -23,9 +23,6 @@ import matplotlib.dates as mdates
 from matplotlib.dates import DateFormatter, num2date
 import matplotlib.pyplot as plt
 import matplotlib
-import sys
-
-sys.path.extend(["py/"])
 
 matplotlib.use("Agg")
 matplotlib.style.use(["science", "ieee"])

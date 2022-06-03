@@ -19,10 +19,10 @@ __status__ = "Research"
 import numpy as np
 import pyIGRF
 import swifter
-import sys
 from loguru import logger
+import datetime as dt
 
-sys.path.extend(["py/"])
+import utils
 
 
 def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
@@ -35,10 +35,10 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
     mag_type: Magnetic model type
     B0: Magnetic field on the surface of the earth near equator
     """
+    r, theta_lat, phi_lon = location[0], location[1], location[2]
     FACT = 180.0 / np.pi
     B = {}
     if mag_type == "igrf":
-        r, theta_lat, phi_lon = location[0], location[1], location[2]
         B["d"], B["i"], B["h"], B["t"], B["p"], B["r"], B["b"] = pyIGRF.igrf_value(
             theta_lat, phi_lon, 0, date.year
         )
@@ -50,7 +50,6 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
             B["b"] * 1e-9,
         )
     elif mag_type == "dipole":
-        r, theta_lat = location[0] + Re, location[1]
         B["r"] = -2 * B0 * (Re / r) ** 3 * np.cos(np.deg2rad(theta_lat))
         B["p"] = 0.0
         B["t"] = -B0 * (Re / r) ** 3 * np.sin(np.deg2rad(theta_lat))
@@ -96,6 +95,23 @@ class EfieldMethods(object):
         row["E_vlos"] = -(row["v"] * Bfield["b"])
         return row
 
+    def compute_from_vect(self, row):
+        """
+        Compute E=-(V_los X B).
+        Assumption:
+        -----------
+        1. Decomposing to horizontal component, valid for a range cell.
+        2. Northward and eastward directed unit vectors n' and e' respectively.
+        2. -(V X B) = -( Vn.Be n' - Ve.Bn e') vector multiplication.
+        """
+        location, date = [300, row["glat"], row["glon"]], row["time"]
+        Bfield = self.get_magnetic_field_info(location, date)
+        azm = self.azms[row["bmnum"], row["slist"]]
+        Vn, Ve = row["v"] * np.cos(np.rad2deg(azm)), row["v"] * np.sin(np.rad2deg(azm))
+        row["E_vector_n"], row["E_vector_e"] = -Vn * Bfield["p"], Ve * Bfield["t"]
+        row["E_vector"] = np.sqrt(row["E_vector_n"] ** 2 + row["E_vector_e"] ** 2)
+        return row
+
 
 class ComputeIonosphereicProperties(EfieldMethods):
     """
@@ -110,6 +126,7 @@ class ComputeIonosphereicProperties(EfieldMethods):
 
     def __init__(
         self,
+        rad,
         df,
         methods={
             "e_field": "vlos",
@@ -121,15 +138,18 @@ class ComputeIonosphereicProperties(EfieldMethods):
         """
         Parameters:
         ----------
+        rad: Radar code
         df: Dataframe containing velocity
         methods: All the methods for various model
         Re: Earth's radius in km
         B0: Magnetic field on the surface of the earth near equator
         """
+        self.rad = rad
         self.df = df
         self.methods = methods
         self.Re = Re
         self.B0 = B0
+        self.glats, self.glons, self.azms = utils.compute_field_of_view_parameters(rad)
         return
 
     def compute_efield(self):
@@ -139,7 +159,7 @@ class ComputeIonosphereicProperties(EfieldMethods):
         # Select function based on
         if self.methods["e_field"] == "v_vector":
             func = self.compute_from_vect
-        elif self.methods["e_field"] == "vlos":
+        elif self.methods["e_field"] == "v_los":
             func = self.compute_from_vlos
         else:
             func = self.compute_from_vlos
@@ -160,6 +180,11 @@ class ComputeIonosphereicProperties(EfieldMethods):
 
 
 if __name__ == "__main__":
-    import datetime as dt
     b = compute_B_field([0, 0, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
     logger.info(f"B-field from dipole: {b}")
+    ### Example code to run vectorized E-field calculations
+    ## from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
+    ## cip = CIP(rad, r_frame, {"e_field": "v_los", "mag_type": "dipole"})
+    ## cpi.compute_efield()
+    ## r_frame = cpi.df.copy()
+    ###

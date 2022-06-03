@@ -25,6 +25,33 @@ import paramiko
 import os
 from cryptography.fernet import Fernet
 import json
+import pydarn
+
+from geopack import rad_fov, geoPack
+
+
+def compute_field_of_view_parameters(rad):
+    """
+    For a radar code compute
+    i) glat, ii) glon, iii) azm
+    for each range cell
+    """
+    hdw = pydarn.read_hdw_file(rad)
+    ngates, nbeams = hdw.gates - 10, hdw.beams
+    glats, glons = pydarn.Coords.GEOGRAPHIC(hdw.stid)
+    azms = np.zeros((nbeams, ngates))
+    for b in range(nbeams):
+        for g in range(ngates):
+            d = geoPack.calcDistPnt(
+                glats[g, b],
+                glons[g, b],
+                300,
+                distLat=glats[g + 1, b],
+                distLon=glons[g + 1, b],
+                distAlt=300,
+            )
+            azms[b, g] = d["az"]
+    return glats, glons, azms
 
 
 def fitting_curves(x, y, xnew, fn, alpha=0.05):
