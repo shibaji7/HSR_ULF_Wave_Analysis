@@ -40,7 +40,7 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
     if mag_type == "igrf":
         r, theta_lat, phi_lon = location[0], location[1], location[2]
         B["d"], B["i"], B["h"], B["t"], B["p"], B["r"], B["b"] = pyIGRF.igrf_value(
-            theta_lat, phi_lon, r, date.year
+            theta_lat, phi_lon, 0, date.year
         )
         B["h"], B["t"], B["p"], B["r"], B["b"] = (
             B["h"] * 1e-9,
@@ -61,32 +61,13 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
     return B
 
 
-class ComputeIonosphereicProperties(object):
+class EfieldMethods(object):
     """
-    This class is dedicated to cunsume SD velocity data,
-    and compute following ionospheric parameter based on various
-    magnetic field and conductivity profiles.
-        1. E-field
-        2. Conducitivity
-        3. Current density
-        4. Jule heating
+    Class holds all the functions to
+    compute electric fields.
     """
 
-    def __init__(self, df, vel_key="vlos", Re=6371.0, mag_type="igrf", B0=3.12 * 1e-5):
-        """
-        Parameters:
-        ----------
-        df: Dataframe containing velocity
-        vel_key: Velocity key to compute E
-        Re: Earth's radius in km
-        mag_type: Magnetic model type
-        B0: Magnetic field on the surface of the earth near equator
-        """
-        self.df = df
-        self.vel_key = vel_key
-        self.Re = Re
-        self.mag_type = mag_type
-        self.B0 = B0
+    def __init__(self):
         return
 
     def get_magnetic_field_info(self, location, date):
@@ -98,29 +79,70 @@ class ComputeIonosphereicProperties(object):
         location: Geographic location [h, lat, lon]
         date: Datetime of the event
         """
-        return compute_B_field(location, date, self.mag_type, self.Re, self.B0)
+        return compute_B_field(
+            location, date, self.methods["mag_type"], self.Re, self.B0
+        )
 
     def compute_from_vlos(self, row):
         """
         Compute E=-(V_los X B).
+        Assumption:
+        -----------
+        1. Reflection is _|_ to B field.
+        2. -(V X B) = [|V|.|B| sin(t)]_t=90 = |V|.|B|
         """
         location, date = [300, row["glat"], row["glon"]], row["time"]
         Bfield = self.get_magnetic_field_info(location, date)
-        row["E_computed_from_vlos"] = -(row["v"] * Bfield["b"])
+        row["E_vlos"] = -(row["v"] * Bfield["b"])
         return row
+
+
+class ComputeIonosphereicProperties(EfieldMethods):
+    """
+    This class is dedicated to cunsume SD velocity data,
+    and compute following ionospheric parameter based on various
+    magnetic field and conductivity profiles.
+        1. E-field
+        2. Conducitivity
+        3. Current density
+        4. Jule heating
+    """
+
+    def __init__(
+        self,
+        df,
+        methods={
+            "e_field": "vlos",
+            "mag_type": "igrf",
+        },
+        Re=6371.0,
+        B0=3.12e-5,
+    ):
+        """
+        Parameters:
+        ----------
+        df: Dataframe containing velocity
+        methods: All the methods for various model
+        Re: Earth's radius in km
+        B0: Magnetic field on the surface of the earth near equator
+        """
+        self.df = df
+        self.methods = methods
+        self.Re = Re
+        self.B0 = B0
+        return
 
     def compute_efield(self):
         """
         Compute E=-(V X B).
-        Assumption:
-        -----------
-        1. Reflection is _|_ to B field.
-        2. Thus v_los is _|_ to B field.
-        3. -(V X B) = [|V|.|B| sin(t)]_t=90 = |V|.|B|.
         """
-        func = (
-            self.compute_from_vlos if self.vel_key == "vlos" else self.compute_from_vlos
-        )
+        # Select function based on
+        if self.methods["e_field"] == "v_vector":
+            func = self.compute_from_vect
+        elif self.methods["e_field"] == "vlos":
+            func = self.compute_from_vlos
+        else:
+            func = self.compute_from_vlos
         self.df = self.df.swifter.apply(func, axis=1)
         return
 
@@ -139,6 +161,5 @@ class ComputeIonosphereicProperties(object):
 
 if __name__ == "__main__":
     import datetime as dt
-
     b = compute_B_field([0, 0, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
-    logger.info(f"B-field from dipole-{b}")
+    logger.info(f"B-field from dipole: {b}")

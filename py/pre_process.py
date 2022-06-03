@@ -374,10 +374,12 @@ class Filter(object):
             self.log += f" Manipulate location information.\n"
             self.r_frame["rad"] = self.rad
             self.r_frame = self.r_frame.swifter.apply(self.__get_magnetic_loc__, axis=1)
-            # Compute Electric field from resampled V_los
-            cip = CIP(self.r_frame, self.vel_key, self.Re, self.mag_type, self.B0)
-            cip.compute_efield()
-            self.r_frame = cip.df.copy()
+            ####
+            ## Compute Electric field from resampled V_los
+            ##>> cip = CIP(self.r_frame, self.methods, self.Re, self.B0)
+            ##>> cip.compute_efield()
+            ##>> self.r_frame = cip.df.copy()
+            ####
         return
 
     def estimate_spred(self, f, x, y, xnew):
@@ -648,7 +650,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=147)
+    DataFetcherFilter(run_first=11)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     #     Filter.filter_data_by_detrending("pgr", [dt.datetime(2016,1,25,1), dt.datetime(2016,1,25,1,30)], beams=[12],

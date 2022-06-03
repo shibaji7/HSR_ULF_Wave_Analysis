@@ -27,10 +27,12 @@
     ]
   },
   "ionospheric_properties": {
-    "vel_key": "vlos",
     "Re": 6371,
-    "mag_type": "igrf",
-    "B0": 0.0000312
+    "B0": 0.0000312,
+    "methods": {
+      "e_field": "vlos",
+      "mag_type": "igrf"
+    }
   },
   "save": {
     "raw": true,
