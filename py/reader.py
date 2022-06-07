@@ -30,7 +30,7 @@ class Folder(object):
     """
 
     def __init__(
-        self, dirs, rad, stime, etime, params=["raw", "fill", "dtrnd", "rsamp", "fft"]
+        self, dirs, rad, stime, etime, params=["fill", "dtrnd", "rsamp", "fft"]
     ):
         self.rad = rad
         self.stime = stime
@@ -153,7 +153,7 @@ class Reader(object):
         base = self.files["base"].format(
             run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
         )
-        for p in ["raw", "dtrnd", "rsamp", "fft"]:
+        for p in ["fill", "dtrnd", "rsamp", "fft"]:
             self.dirs[p] = base + self.files["csv"] % (p)
         self.dirs["log"] = base + self.files["log"] % ("log")
         self.dirs["rti_plot"] = base + self.files["rti_plot"]

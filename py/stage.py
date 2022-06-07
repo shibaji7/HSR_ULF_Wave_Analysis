@@ -99,15 +99,15 @@ class StagingUnit(object):
         setattr(self, "stage_arc", o["stage_arc"])
         setattr(self, "remove_local", o["remove_local"])
         self.dirs = {}
-        self.base = self.files["base"].format(
-            run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
+        self.stage = self.files["stage"].format(
+            date=dates[0].strftime("%Y-%m-%d")
         )
-        self.arc_base = self.files["arc_base"].format(
-            run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
+        self.arc_stage = self.files["arc_stage"].format(
+            date=dates[0].strftime("%Y-%m-%d")
         )
-        if not os.path.exists(self.base):
-            os.system("mkdir -p " + self.base)
-        self.dirs["raw"] = self.base + self.files["csv"] % ("raw")
+        if not os.path.exists(self.stage):
+            os.system("mkdir -p " + self.stage)
+        self.dirs["raw"] = self.stage + self.files["csv"] % ("raw")
         stime, etime = dates[0].strftime("%H%M"), dates[-1].strftime("%H%M")
         self.dirs["raw"] = self.dirs["raw"].format(
             rad=self.rad, stime=stime, etime=etime
@@ -160,11 +160,7 @@ class StagingUnit(object):
         ## To remote super computer
         if self.stage_arc:
             conn = utils.get_session(key_filename=utils.get_pubfile())
-            utils.to_remote_FS(conn, self.dirs["raw"], self.arc_base, self.remove_local)
-        ## Save Parameter File
-        prm_file = "/".join(self.base.split("/")[:-2]) + "/params.json"
-        if self.save["param"] and (not os.path.exists(prm_file)):
-            shutil.copy("config/params.json", prm_file)
+            utils.to_remote_FS(conn, self.dirs["raw"], self.arc_stage, self.remove_local)
         return
 
 
@@ -230,7 +226,7 @@ class StagingHopper(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    StagingHopper(run_first=147)
+    StagingHopper(run_first=11)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     pass

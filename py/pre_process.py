@@ -144,12 +144,21 @@ class Filter(object):
         self.arc_base = self.files["arc_base"].format(
             run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
         )
+        self.stage = self.files["stage"].format(
+            date=dates[0].strftime("%Y-%m-%d")
+        )
+        self.arc_stage = self.files["arc_stage"].format(
+            date=dates[0].strftime("%Y-%m-%d")
+        )
         if self.stage_arc:
-            self.base = self.arc_base
+            self.base, self.stage = self.arc_base, self.arc_stage
         if not os.path.exists(self.base):
             os.system("mkdir -p " + self.base)
         for p in ["raw", "fill", "dtrnd", "rsamp", "fft"]:
-            self.dirs[p] = self.base + self.files["csv"] % (p)
+            if p == "raw":
+                self.dirs[p] = self.stage + self.files["csv"] % ("raw")
+            else:
+                self.dirs[p] = self.base + self.files["csv"] % (p)
         self.dirs["log"] = self.base + self.files["log"] % ("log")
         self.dirs["rti_plot"] = self.base + self.files["rti_plot"]
         return
