@@ -1,8 +1,8 @@
 {
-  "run_id": 11,
+  "run_id": 12,
   "ftype": "fitacf3",
-  "stage_arc": false,
-  "remove_local": false,
+  "stage_arc": true,
+  "remove_local": true,
   "filter": {
     "hour_win": 1,
     "gflg_key": "gflg",

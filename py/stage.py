@@ -227,7 +227,7 @@ class StagingHopper(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    StagingHopper(run_first=11)
+    StagingHopper(run_first=None)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     pass
