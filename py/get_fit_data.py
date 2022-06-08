@@ -19,7 +19,7 @@ import bz2
 import pydarnio as pydarn
 from loguru import logger
 
-import utils
+import utils as utils
 
 
 class Gate(object):

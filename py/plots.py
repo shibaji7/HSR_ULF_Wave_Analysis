@@ -12,7 +12,7 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-import utils
+import utils as utils
 import numpy as np
 import pandas as pd
 import matplotlib.patches as mpatches

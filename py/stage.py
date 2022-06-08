@@ -26,9 +26,7 @@ import time
 import os
 import sys
 import shutil
-
-sys.path.extend(["py/"])
-import utils
+import utils as utils
 import json
 
 

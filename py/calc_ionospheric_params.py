@@ -22,7 +22,7 @@ import swifter
 from loguru import logger
 import datetime as dt
 
-import utils
+import utils as utils
 
 
 def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
@@ -40,7 +40,7 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
     B = {}
     if mag_type == "igrf":
         B["d"], B["i"], B["h"], B["t"], B["p"], B["r"], B["b"] = pyIGRF.igrf_value(
-            theta_lat, phi_lon, 0, date.year
+            theta_lat, phi_lon, r, date.year
         )
         B["h"], B["t"], B["p"], B["r"], B["b"] = (
             B["h"] * 1e-9,
@@ -50,9 +50,11 @@ def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
             B["b"] * 1e-9,
         )
     elif mag_type == "dipole":
-        B["r"] = -2 * B0 * (Re / r) ** 3 * np.cos(np.deg2rad(theta_lat))
+        r += Re
+        theta_lat = 90 - theta_lat
+        B["r"] = 2 * B0 * (Re / r) ** 3 * np.cos(np.deg2rad(theta_lat))
         B["p"] = 0.0
-        B["t"] = -B0 * (Re / r) ** 3 * np.sin(np.deg2rad(theta_lat))
+        B["t"] = B0 * (Re / r) ** 3 * np.sin(np.deg2rad(theta_lat))
         B["b"] = np.sqrt(B["r"] ** 2 + B["t"] ** 2)
         B["h"] = np.sqrt(B["p"] ** 2 + B["t"] ** 2)
         B["i"] = FACT * np.arctan2(B["r"], B["h"])
@@ -88,7 +90,7 @@ class EfieldMethods(object):
         Assumption:
         -----------
         1. Reflection is _|_ to B field.
-        2. -(V X B) = [|V|.|B| sin(t)]_t=90 = |V|.|B|
+        2. -(V X B) = [-|V|.|B| sin(t)]_t=90 = -|V|.|B|
         """
         location, date = [300, row["glat"], row["glon"]], row["time"]
         Bfield = self.get_magnetic_field_info(location, date)
@@ -180,8 +182,10 @@ class ComputeIonosphereicProperties(EfieldMethods):
 
 
 if __name__ == "__main__":
-    b = compute_B_field([0, 0, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
+    b = compute_B_field([0, 90, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
     logger.info(f"B-field from dipole: {b}")
+    b = compute_B_field([0, 90, 0], dt.datetime(2015, 1, 1), mag_type="igrf")
+    logger.info(f"B-field from igrf: {b}")
     ### Example code to run vectorized E-field calculations
     ## from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
     ## cip = CIP(rad, r_frame, {"e_field": "v_los", "mag_type": "dipole"})

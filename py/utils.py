@@ -27,7 +27,7 @@ from cryptography.fernet import Fernet
 import json
 import pydarn
 
-from geopack import rad_fov, geoPack
+from geo import rad_fov, geoPack
 
 
 def compute_field_of_view_parameters(rad):

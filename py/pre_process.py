@@ -12,7 +12,6 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-from get_fit_data import FetchData
 from plots import RangeTimeIntervalPlot as RTI
 import pydarn
 import aacgmv2
@@ -32,7 +31,7 @@ from loguru import logger
 import os
 import swifter
 
-import utils
+import utils as utils
 
 
 class Filter(object):

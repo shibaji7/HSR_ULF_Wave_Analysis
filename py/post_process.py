@@ -13,7 +13,7 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-from reader import Reader
+from py.reader import Reader
 import os
 import numpy as np
 from scipy import stats
