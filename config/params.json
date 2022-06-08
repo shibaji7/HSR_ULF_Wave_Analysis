@@ -2,7 +2,7 @@
   "run_id": 12,
   "ftype": "fitacf3",
   "stage_arc": true,
-  "remove_local": true,
+  "remove_local": false,
   "filter": {
     "hour_win": 1,
     "gflg_key": "gflg",

@@ -162,6 +162,7 @@ class StagingUnit(object):
             utils.to_remote_FS(
                 conn, self.dirs["raw"], self.arc_stage, self.remove_local
             )
+            conn.close()
         return
 
 
@@ -192,15 +193,20 @@ class StagingHopper(object):
         """
         Process method to invoke stagging unit
         """
-        s = None
-        if (o["etime"] - o["stime"]).total_seconds() / 3600.0 >= 1.0:
-            rad, dates = o["rad"], [o["stime"], o["etime"]]
-            logger.info(
-                f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
-            )
-            s = StagingUnit(rad, dates)
-            if s.data_exists:
-                s._save()
+        try:
+            s = None
+            if (o["etime"] - o["stime"]).total_seconds() / 3600.0 >= 1.0:
+                rad, dates = o["rad"], [o["stime"], o["etime"]]
+                logger.info(
+                    f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                )
+                s = StagingUnit(rad, dates)
+                if s.data_exists:
+                    s._save()
+        except:
+            logger.error(
+                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                )
         return s
 
     def _run(self):
