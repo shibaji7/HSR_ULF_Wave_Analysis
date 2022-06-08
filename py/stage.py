@@ -30,6 +30,7 @@ import os
 import sys
 import shutil
 import utils as utils
+import traceback
 import json
 
 
@@ -204,8 +205,9 @@ class StagingHopper(object):
                 if s.data_exists:
                     s._save()
         except:
+            err = traceback.format_exc()
             logger.error(
-                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
                 )
         return s
 

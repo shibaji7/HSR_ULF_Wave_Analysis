@@ -32,6 +32,7 @@ import numpy as np
 import datetime as dt
 from loguru import logger
 import os
+import traceback
 import swifter
 
 import utils as utils
@@ -537,9 +538,7 @@ class Filter(object):
             self.log += f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec."
             with open(file, "w") as f:
                 f.writelines(self.log)
-        base = self.files["base"].format(
-            run_id=self.run_id, date=self.dates[0].strftime("%Y-%m-%d")
-        )
+        base = self.base
         prm_file = "/".join(base.split("/")[:-2]) + "/params.json"
         if self.save["param"] and (not os.path.exists(prm_file)):
             shutil.copy("config/params.json", prm_file)
@@ -596,7 +595,7 @@ class DataFetcherFilter(object):
     based on the given filtering condition.
     """
 
-    def __init__(self, _filestr="config/logs/*.txt", cores=24, run_first=None):
+    def __init__(self, _filestr="config/logs/*.txt", cores=8, run_first=None):
         """
         Params
         ------
@@ -626,8 +625,9 @@ class DataFetcherFilter(object):
                 if f.data_exists:
                     f._save()
         except:
+            err = traceback.format_exc()
             logger.error(
-                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
                 )
         return f
 
