@@ -175,7 +175,7 @@ class StagingHopper(object):
     local or ARC.
     """
 
-    def __init__(self, _filestr="config/logs/*.txt", cores=24, run_first=None):
+    def __init__(self, _filestr="config/logs/*.txt", cores=8, run_first=None):
         """
         Params
         ------
