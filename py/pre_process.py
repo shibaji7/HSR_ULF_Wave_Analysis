@@ -615,15 +615,20 @@ class DataFetcherFilter(object):
         """
         Process method to invoke filter
         """
-        f = None
-        if (o["etime"] - o["stime"]).total_seconds() / 3600.0 >= 1.0:
-            rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
-            logger.info(
-                f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
-            )
-            f = Filter(rad, dates, beams)
-            if f.data_exists:
-                f._save()
+        try:
+            f = None
+            if (o["etime"] - o["stime"]).total_seconds() / 3600.0 >= 1.0:
+                rad, dates, beams = o["rad"], [o["stime"], o["etime"]], o["beams"]
+                logger.info(
+                    f"Filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                )
+                f = Filter(rad, dates, beams)
+                if f.data_exists:
+                    f._save()
+        except:
+            logger.error(
+                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]}"
+                )
         return f
 
     def _run(self):
