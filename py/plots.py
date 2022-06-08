@@ -11,7 +11,9 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import sys
 
+sys.path.extend(["py/"])
 import utils as utils
 import numpy as np
 import pandas as pd

@@ -13,6 +13,9 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import sys
+
+sys.path.extend(["py/"])
 
 from get_fit_data import FetchData
 from functools import partial
@@ -97,9 +100,7 @@ class StagingUnit(object):
         setattr(self, "stage_arc", o["stage_arc"])
         setattr(self, "remove_local", o["remove_local"])
         self.dirs = {}
-        self.stage = self.files["stage"].format(
-            date=dates[0].strftime("%Y-%m-%d")
-        )
+        self.stage = self.files["stage"].format(date=dates[0].strftime("%Y-%m-%d"))
         self.arc_stage = self.files["arc_stage"].format(
             date=dates[0].strftime("%Y-%m-%d")
         )
@@ -158,7 +159,9 @@ class StagingUnit(object):
         ## To remote super computer
         if self.stage_arc:
             conn = utils.get_session(key_filename=utils.get_pubfile())
-            utils.to_remote_FS(conn, self.dirs["raw"], self.arc_stage, self.remove_local)
+            utils.to_remote_FS(
+                conn, self.dirs["raw"], self.arc_stage, self.remove_local
+            )
         return
 
 

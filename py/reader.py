@@ -13,6 +13,9 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import sys
+
+sys.path.extend(["py/"])
 
 from plots import AnalysisStackPlots
 import py.utils as utils

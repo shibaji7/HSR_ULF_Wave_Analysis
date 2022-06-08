@@ -11,6 +11,9 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import sys
+
+sys.path.extend(["py/"])
 
 from plots import RangeTimeIntervalPlot as RTI
 import pydarn
@@ -143,9 +146,7 @@ class Filter(object):
         self.arc_base = self.files["arc_base"].format(
             run_id=self.run_id, date=dates[0].strftime("%Y-%m-%d")
         )
-        self.stage = self.files["stage"].format(
-            date=dates[0].strftime("%Y-%m-%d")
-        )
+        self.stage = self.files["stage"].format(date=dates[0].strftime("%Y-%m-%d"))
         self.arc_stage = self.files["arc_stage"].format(
             date=dates[0].strftime("%Y-%m-%d")
         )
