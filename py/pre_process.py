@@ -655,7 +655,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=2)
+    DataFetcherFilter(run_first=None)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     pass
