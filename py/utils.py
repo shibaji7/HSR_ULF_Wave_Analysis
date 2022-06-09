@@ -214,7 +214,15 @@ def ribiero_gs_flg(vel, time):
     # else:
     #    return False
 
-
+def get_radar_fov_locations(rad=None, hdw=None):
+    """
+    Fetch radar fov lats and lons
+    """
+    if hdw is None: hdw = pydarn.read_hdw_file(rad)
+    fov = rad_fov.CalcFov(hdw=hdw)
+    lats, lons = fov.latFull.T, fov.lonFull.T
+    return lats, lons
+    
 def _run_riberio_threshold_on_rad(u, flag="gflg_ribiero"):
     df = u.copy()
     clust_flag = np.array(df.cluster_tag)

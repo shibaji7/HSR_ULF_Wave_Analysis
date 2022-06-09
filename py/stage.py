@@ -83,7 +83,9 @@ class StagingUnit(object):
         self.rad = rad
         self.dates = dates
         self.load_params(dates)
-        self._fetch()
+        self.data_exists = False
+        if not os.path.exists(self.fetch_file("raw")): 
+            self._fetch()
         return
 
     def load_params(self, dates):
@@ -113,6 +115,14 @@ class StagingUnit(object):
             rad=self.rad, stime=stime, etime=etime
         )
         return
+    
+    def fetch_file(self, p):
+        """
+        Return filename
+        """
+        stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
+        file = self.dirs[p].format(rad=self.rad, stime=stime, etime=etime)
+        return file
 
     def _fetch(self):
         """
@@ -229,7 +239,8 @@ class StagingHopper(object):
         partial_filter = partial(self._proc)
         for f in p0.map(partial_filter, rlist):
             self.flist.append(f)
-        os.system("scp -r tmp/stage/ shibaji7@cascades1.arc.vt.edu:~/LFS/HSR_ULF_DATA/")
+        if f.stage_arc: 
+            os.system("scp -r tmp/stage/ shibaji7@cascades1.arc.vt.edu:~/LFS/HSR_ULF_DATA/")
         return
 
 

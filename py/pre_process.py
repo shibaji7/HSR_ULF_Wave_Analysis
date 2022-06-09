@@ -106,11 +106,14 @@ class Filter(object):
         if ts is not None:
             self.ts = ts
         hdw_data = pydarn.read_hdw_file(self.rad)
-        self.lats, self.lons = pydarn.Coords.GEOGRAPHIC(hdw_data.stid)
+        #self.lats, self.lons = pydarn.Coords.GEOGRAPHIC(hdw_data.stid)
+        self.lats, self.lons = utils.get_radar_fov_locations(hdw=hdw_data)
         self.log = f" Done initialization: {self.rad}, {self.dates}\n"
-        self._fetch()
-        if self.data_exists:
-            self._filter()
+        self.data_exists = False
+        if not os.path.exists(self.fetch_file("fft")):
+            self._fetch()
+            if self.data_exists:
+                self._filter()
         return
 
     def cacl_nechoes(self, intt):
@@ -504,16 +507,23 @@ class Filter(object):
             )
             rti.close()
         return
+    
+    def fetch_file(self, p):
+        """
+        Return filename
+        """
+        stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
+        file = self.dirs[p].format(rad=self.rad, stime=stime, etime=etime)
+        return file
 
     def _save(self):
         """
         Print data into csv file for later processing.
         """
         self.log += f" Done processing, saving data to csv and logs.\n"
-        stime, etime = self.dates[0].strftime("%H%M"), self.dates[-1].strftime("%H%M")
         for p in ["fill", "dtrnd", "rsamp", "fft"]:
             if self.save[p]:
-                file = self.dirs[p].format(rad=self.rad, stime=stime, etime=etime)
+                file = self.fetch_file(p)
                 if p == "fill":
                     self.fil_frame.to_csv(
                         file, index=False, header=True, float_format="%g"
@@ -531,7 +541,7 @@ class Filter(object):
                         file, index=False, header=True, float_format="%g"
                     )
         if self.save["log"]:
-            file = self.dirs["log"].format(rad=self.rad, stime=stime, etime=etime)
+            file = self.fetch_file("log")
             logger.info(
                 f" Proc interval time {np.round(time.time() - self.proc_start_time, 2)} sec."
             )
@@ -655,7 +665,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=None)
+    DataFetcherFilter(run_first=1000)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     pass

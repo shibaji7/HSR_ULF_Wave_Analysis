@@ -1,5 +1,8 @@
+import sys
+sys.path.extend(["py/", "py/geo/"])
 import numpy
 
+_BOFF = "physical"
 
 class CalcFov(object):
     """
@@ -585,8 +588,8 @@ class CalcFov(object):
         """
         #     import sys
         #     sys.path.append('../utils/')
-        import geoPack
-        import model_vheight as vhm
+        from geo import geoPack
+        from geo import model_vheight as vhm
 
         # Only geo is implemented.
         if coords != "geo":
@@ -719,7 +722,7 @@ class CalcFov(object):
                 # with elevation) [degree]
                 boff = self.calcAzOffBore(tel, beam_off, fov_dir=fov_dir)
                 # pointing azimuth
-                taz = boresight + boff
+                taz = getattr(boresight, _BOFF) + boff
                 # calculate position of field point
                 geo_dict = geoPack.calcDistPnt(
                     tr_glat, tr_glon, tr_alt, dist=asr, el=tel, az=taz
