@@ -1,7 +1,7 @@
 {
   "run_id": 12,
   "ftype": "fitacf3",
-  "stage_arc": true,
+  "stage_arc": false,
   "remove_local": false,
   "filter": {
     "hour_win": 1,

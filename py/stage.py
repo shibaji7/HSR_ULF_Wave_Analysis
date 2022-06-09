@@ -229,6 +229,7 @@ class StagingHopper(object):
         partial_filter = partial(self._proc)
         for f in p0.map(partial_filter, rlist):
             self.flist.append(f)
+        os.system("scp -r tmp/stage/ shibaji7@cascades1.arc.vt.edu:~/LFS/HSR_ULF_DATA/")
         return
 
 

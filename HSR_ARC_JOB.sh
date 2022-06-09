@@ -1,15 +1,12 @@
 #!/bin/bash
-#PBS -l nodes=1:ppn=48
-#PBS -l walltime=24:00:00
-#PBS -l procs=40
-#PBS -q normal_q
-#PBS -A solarflare
-#PBS -W group_list=cascades
-#PBS -M shibaji7@vt.edu
-#PBS -m bea
-cd $PBS_O_WORKDIR
+#SBATCH -J HSR-ARC-CODE
+#SBATCH --account=personal
+#SBATCH --partition=v100_normal_q
+#SBATCH --nodes=3 --ntasks-per-node=12 --cpus-per-task=1
+#SBATCH --time=0-12:10:00
+#SBATCH --mem=20G
+
 module purge
 module load Anaconda/5.2.0
 source activate ulf
-python py/pre_process.py
-exit;
+cd $SLURM_SUBMIT_DIR
