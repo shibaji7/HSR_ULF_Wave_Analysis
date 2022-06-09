@@ -21,7 +21,7 @@ import os
 import numpy as np
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
-
+from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 def narrowband_wave_finder(
     freqs, psd, phase, fl_s=0.0016, fh_s=0.0067, fl_t=0.000278, fh_t=0.027778
@@ -117,7 +117,8 @@ def despike_mad(data, num=6, scale="normal"):
 
 
 def save_event_info(
-    fname="wave_events_info.csv", stack_plot=True, I_min=0.5, N_min=420
+    fname="wave_events_info.csv", stack_plot=True, I_min=0.5, 
+    N_min=420,E_method = "v_los",mag_type="igrf"
 ):
     """
     save events identified by the narrowband_wave_finder into a csv file
@@ -154,6 +155,7 @@ def save_event_info(
         "etime": [],
         "len": [],
         "intt": [],
+        "Erms":[]
     }
 
     for row in o.index:
@@ -201,6 +203,13 @@ def save_event_info(
                         mlt_df = np.array(o_ts["mlt"])
                         len_df = np.array(o_ts["len"])
                         intt_df = np.array(o_ts["intt"])
+                        cip = CIP(rad, o_ts, {"e_field": E_method, "mag_type": mag_type})
+                        cip.compute_efield()
+                        r_frame = cip.df.copy()
+                        E_VXB = np.array(r_frame['E_vlos']) 
+                        E_rms = np.sqrt(np.sum(np.square(E_VXB))/N)
+                        
+                        event_dic['Erms'].append(E_rms)
                         event_dic["mlat"].append(mlat_df[N])
                         event_dic["mlon"].append(mlon_df[N])
                         event_dic["mlt"].append(mlt_df[N])
