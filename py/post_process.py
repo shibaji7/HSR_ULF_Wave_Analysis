@@ -117,8 +117,9 @@ def despike_mad(data, num=6, scale="normal"):
 
 
 def save_event_info(
-    fname="wave_events_info.csv", stack_plot=True, I_min=0.5, 
-    N_min=420,E_method = "v_los",mag_type="igrf"
+    fname="201501_v_los_igrf.csv", stack_plot=False, I_min=0.5, 
+    N_min=420,E_method = "v_los",mag_type="igrf",
+    rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt"
 ):
     """
     save events identified by the narrowband_wave_finder into a csv file
@@ -131,7 +132,7 @@ def save_event_info(
     """
 
     # Create a reader object that reads all the RBSP mode entries
-    r = Reader()
+    r = Reader(_filestr="config/logs/"+rbsp_log_fn)
     # Check for entries
     # o = r.check_entries(rad="bks")
     o = r.check_entries()
@@ -261,3 +262,9 @@ def save_event_info(
 
     df = pd.DataFrame(event_dic)
     df.to_csv(fname, index=False)
+
+t = time.time()
+save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
+                I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
+                rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
+print(time.time()-t)
