@@ -84,7 +84,7 @@ class StagingUnit(object):
         self.dates = dates
         self.load_params(dates)
         self.data_exists = False
-        if not os.path.exists(self.fetch_file("raw")): 
+        if not os.path.exists(self.fetch_file("raw")):
             self._fetch()
         return
 
@@ -115,7 +115,7 @@ class StagingUnit(object):
             rad=self.rad, stime=stime, etime=etime
         )
         return
-    
+
     def fetch_file(self, p):
         """
         Return filename
@@ -217,8 +217,8 @@ class StagingHopper(object):
         except:
             err = traceback.format_exc()
             logger.error(
-                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
-                )
+                f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
+            )
         return s
 
     def _run(self):
@@ -239,8 +239,11 @@ class StagingHopper(object):
         partial_filter = partial(self._proc)
         for f in p0.map(partial_filter, rlist):
             self.flist.append(f)
-        if f.stage_arc: 
-            os.system("scp -r tmp/stage/ shibaji7@cascades1.arc.vt.edu:~/LFS/HSR_ULF_DATA/")
+        if f.stage_arc:
+            os.system(
+                "scp -r tmp/stage/ shibaji7@cascades1.arc.vt.edu:~/LFS/HSR_ULF_DATA/"
+            )
+        logger.info(f"Job complete!")
         return
 
 

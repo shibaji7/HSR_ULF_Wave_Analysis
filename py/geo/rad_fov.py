@@ -1,8 +1,10 @@
 import sys
+
 sys.path.extend(["py/", "py/geo/"])
 import numpy
 
 _BOFF = "physical"
+
 
 class CalcFov(object):
     """

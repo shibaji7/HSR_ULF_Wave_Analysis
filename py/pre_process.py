@@ -106,7 +106,7 @@ class Filter(object):
         if ts is not None:
             self.ts = ts
         hdw_data = pydarn.read_hdw_file(self.rad)
-        #self.lats, self.lons = pydarn.Coords.GEOGRAPHIC(hdw_data.stid)
+        # self.lats, self.lons = pydarn.Coords.GEOGRAPHIC(hdw_data.stid)
         self.lats, self.lons = utils.get_radar_fov_locations(hdw=hdw_data)
         self.log = f" Done initialization: {self.rad}, {self.dates}\n"
         self.data_exists = False
@@ -507,7 +507,7 @@ class Filter(object):
             )
             rti.close()
         return
-    
+
     def fetch_file(self, p):
         """
         Return filename
@@ -637,8 +637,8 @@ class DataFetcherFilter(object):
         except:
             err = traceback.format_exc()
             logger.error(
-                    f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
-                )
+                f"Error in filtering radar {rad} for {[d.strftime('%Y.%m.%dT%H.%M') for d in dates]} \n {err}"
+            )
         return f
 
     def _run(self):
@@ -665,7 +665,7 @@ class DataFetcherFilter(object):
 if __name__ == "__main__":
     "__main__ function"
     start = time.time()
-    DataFetcherFilter(run_first=1000)
+    DataFetcherFilter(run_first=None)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
     pass
