@@ -24,6 +24,7 @@ from scipy import stats
 from scipy.signal import find_peaks, peak_widths
 from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
+
 def narrowband_wave_finder(
     freqs, psd, phase, fl_s=0.0016, fh_s=0.0067, fl_t=0.000278, fh_t=0.027778
 ):
@@ -116,9 +117,13 @@ def despike_mad(data, num=6, scale="normal"):
 
 
 def save_event_info(
-    fname="201501_v_los_igrf.csv", stack_plot=False, I_min=0.5, 
-    N_min=420,E_method = "v_los",mag_type="igrf",
-    rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt"
+    fname="201501_v_los_igrf.csv",
+    stack_plot=False,
+    I_min=0.5,
+    N_min=420,
+    E_method="v_los",
+    mag_type="igrf",
+    rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt",
 ):
     """
     save events identified by the narrowband_wave_finder into a csv file
@@ -129,7 +134,7 @@ def save_event_info(
     """
 
     # Create a reader object that reads all the RBSP mode entries
-    r = Reader(_filestr="config/logs/"+rbsp_log_fn)
+    r = Reader(_filestr="config/logs/" + rbsp_log_fn)
     # Check for entries
     # o = r.check_entries(rad="bks")
     o = r.check_entries()
@@ -153,7 +158,7 @@ def save_event_info(
         "etime": [],
         "len": [],
         "intt": [],
-        "Erms":[]
+        "Erms": [],
     }
 
     for row in o.index:
@@ -201,13 +206,15 @@ def save_event_info(
                         mlt_df = np.array(o_ts["mlt"])
                         len_df = np.array(o_ts["len"])
                         intt_df = np.array(o_ts["intt"])
-                        cip = CIP(rad, o_ts, {"e_field": E_method, "mag_type": mag_type})
+                        cip = CIP(
+                            rad, o_ts, {"e_field": E_method, "mag_type": mag_type}
+                        )
                         cip.compute_efield()
                         r_frame = cip.df.copy()
-                        E_VXB = np.array(r_frame['E_vlos']) 
-                        E_rms = np.sqrt(np.sum(np.square(E_VXB))/N)
-                        
-                        event_dic['Erms'].append(E_rms)
+                        E_VXB = np.array(r_frame["E_vlos"])
+                        E_rms = np.sqrt(np.sum(np.square(E_VXB)) / N)
+
+                        event_dic["Erms"].append(E_rms)
                         event_dic["mlat"].append(mlat_df[N])
                         event_dic["mlon"].append(mlon_df[N])
                         event_dic["mlt"].append(mlt_df[N])
@@ -260,8 +267,9 @@ def save_event_info(
     df = pd.DataFrame(event_dic)
     df.to_csv(fname, index=False)
 
-#t = time.time()
-#save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
+
+# t = time.time()
+# save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
 #                I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
 #                rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
-#print(time.time()-t)
+# print(time.time()-t)
