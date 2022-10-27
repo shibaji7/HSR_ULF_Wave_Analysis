@@ -275,7 +275,7 @@ def save_event_info(
                                 gate=gt,
                             )
                             r.generate_stacks(frames, fig_name)
-        break
+
     df = pd.DataFrame(event_dic)
     df.to_csv(fname, index=False)
 
