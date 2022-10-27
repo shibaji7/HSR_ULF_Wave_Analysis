@@ -185,7 +185,7 @@ def save_event_info(
                 Tn = rec["Tx"]
                 stime = rec["tmin"]
                 etime = rec["tmax"]
-                stime, etime = round_to_nearest(stime, etime)
+                re_stime, re_etime = round_to_nearest(stime, etime)
                 o_fft = r.file_entries[row].get_data(
                     p="fft", beams=[bm], gates=[gt], Tx=[Tn]
                 )
@@ -235,6 +235,8 @@ def save_event_info(
                         event_dic["gate"].append(gt)
                         event_dic["stime"].append(stime)
                         event_dic["etime"].append(etime)
+                        event_dic["re_stime"].append(re_stime)
+                        event_dic["re_etime"].append(re_etime)
                         event_dic["len"].append(len_df[N])
                         event_dic["intt"].append(intt_df[N])
 
