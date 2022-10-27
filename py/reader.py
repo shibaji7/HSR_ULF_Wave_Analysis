@@ -18,7 +18,7 @@ import sys
 sys.path.extend(["py/"])
 
 from plots import AnalysisStackPlots
-import py.utils as utils
+import utils as utils
 from loguru import logger
 import json
 import pandas as pd

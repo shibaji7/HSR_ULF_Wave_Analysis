@@ -25,6 +25,17 @@ from scipy.signal import find_peaks, peak_widths
 from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 
+def round_to_nearest(stime, etime, tdel=60):
+    """
+    Convert time range to nearest time
+    """
+    import datetime as dt
+    tdel = np.rint((etime-stime).total_seconds()/(60*tdel))
+    
+    stime = stime.replace(second=0, microsecond=0)
+    etime = stime + dt.timedelta(hours=tdel)
+    return stime, etime
+
 def narrowband_wave_finder(
     freqs, psd, phase, fl_s=0.0016, fh_s=0.0067, fl_t=0.000278, fh_t=0.027778
 ):
@@ -137,7 +148,7 @@ def save_event_info(
     r = Reader(_filestr="config/logs/" + rbsp_log_fn)
     # Check for entries
     # o = r.check_entries(rad="bks")
-    o = r.check_entries()
+    o = r.check_entries(rad="bks")
     event_dic = {
         "FWHM": [],
         "f_left_ind": [],
@@ -174,6 +185,7 @@ def save_event_info(
                 Tn = rec["Tx"]
                 stime = rec["tmin"]
                 etime = rec["tmax"]
+                stime, etime = round_to_nearest(stime, etime)
                 o_fft = r.file_entries[row].get_data(
                     p="fft", beams=[bm], gates=[gt], Tx=[Tn]
                 )
@@ -263,13 +275,13 @@ def save_event_info(
                                 gate=gt,
                             )
                             r.generate_stacks(frames, fig_name)
-
+        break
     df = pd.DataFrame(event_dic)
     df.to_csv(fname, index=False)
 
-
-# t = time.time()
-# save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
-#                I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
-#                rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
-# print(time.time()-t)
+import time
+t = time.time()
+save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
+               I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
+               rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
+print(time.time()-t)
