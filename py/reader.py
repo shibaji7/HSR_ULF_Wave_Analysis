@@ -94,8 +94,8 @@ class Folder(object):
 #                                 o[(o.bmnum == b) & (o.slist == g) & (o.Tx == t)].time
 #                             )
                             tmax, tmin = (
-                                o.time_window_start.iloc[0], 
-                                o.time_window_end.iloc[0]
+                                o.time_window_end.iloc[0], 
+                                o.time_window_start.iloc[0]
                             )
                             #max(times), min(times)
                         else:
