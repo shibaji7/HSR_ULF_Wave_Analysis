@@ -86,6 +86,7 @@ class Filter(object):
         min_pct_echoes - Minimum precentage of echoes per hour window per cell
         """
         self.proc_start_time = time.time()
+        dates = list(utils.reset_start_end_date(dates[0], dates[1]))
         self.load_params(dates)
         self.rad = rad
         self.dates = dates
@@ -377,8 +378,10 @@ class Filter(object):
                                 Lx,
                                 len(ynew),
                             )
+                            o["time_window_start"], o["time_window_end"] = tw[0], tw[1]
                             self.r_frame = pd.concat([self.r_frame, o])
                             fft = self.__run_fft__(o, b, r, tx, nechoes, Lx, len(ynew))
+                            fft["time_window_start"], fft["time_window_end"] = tw[0], tw[1]
                             self.fft_frame = pd.concat([self.fft_frame, fft])
         if len(self.r_frame) > 0:
             self.log += f" Manipulate location information.\n"

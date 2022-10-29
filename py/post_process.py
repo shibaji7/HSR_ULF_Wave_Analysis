@@ -128,7 +128,7 @@ def despike_mad(data, num=6, scale="normal"):
 
 
 def save_event_info(
-    fname="201501_v_los_igrf.csv",
+    fname="tmp/201501_v_los_igrf.csv",
     stack_plot=False,
     I_min=0.5,
     N_min=420,
@@ -148,7 +148,7 @@ def save_event_info(
     r = Reader(_filestr="config/logs/" + rbsp_log_fn)
     # Check for entries
     # o = r.check_entries(rad="bks")
-    o = r.check_entries(rad="bks")
+    o = r.check_entries()
     event_dic = {
         "FWHM": [],
         "f_left_ind": [],
@@ -178,14 +178,13 @@ def save_event_info(
         if filt_dict:
             entry = r.rbsp_logs.iloc[row]
             rad = entry.rad
-            # print(entry.rad)
             for rec in filt_dict["rsamp"]:
                 bm = rec["beam"]
                 gt = rec["gate"]
                 Tn = rec["Tx"]
                 stime = rec["tmin"]
                 etime = rec["tmax"]
-                re_stime, re_etime = round_to_nearest(stime, etime)
+                #re_stime, re_etime = round_to_nearest(stime, etime)
                 o_fft = r.file_entries[row].get_data(
                     p="fft", beams=[bm], gates=[gt], Tx=[Tn]
                 )
@@ -235,8 +234,8 @@ def save_event_info(
                         event_dic["gate"].append(gt)
                         event_dic["stime"].append(stime)
                         event_dic["etime"].append(etime)
-                        event_dic["re_stime"].append(re_stime)
-                        event_dic["re_etime"].append(re_etime)
+                        #event_dic["re_stime"].append(re_stime)
+                        #event_dic["re_etime"].append(re_etime)
                         event_dic["len"].append(len_df[N])
                         event_dic["intt"].append(intt_df[N])
 
@@ -283,7 +282,7 @@ def save_event_info(
 
 import time
 t = time.time()
-save_event_info(fname='201501_v_los_igrf.csv',stack_plot=False,
+save_event_info(fname='tmp/201501_v_los_igrf.csv',stack_plot=False,
                I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
                rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
 print(time.time()-t)
