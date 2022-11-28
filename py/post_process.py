@@ -25,17 +25,6 @@ from scipy.signal import find_peaks, peak_widths
 from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 
-def round_to_nearest(stime, etime, tdel=60):
-    """
-    Convert time range to nearest time
-    """
-    import datetime as dt
-    tdel = np.rint((etime-stime).total_seconds()/(60*tdel))
-    
-    stime = stime.replace(second=0, microsecond=0)
-    etime = stime + dt.timedelta(hours=tdel)
-    return stime, etime
-
 def narrowband_wave_finder(
     freqs, psd, phase, fl_s=0.0016, fh_s=0.0067, fl_t=0.000278, fh_t=0.027778
 ):

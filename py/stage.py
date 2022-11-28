@@ -81,7 +81,7 @@ class StagingUnit(object):
         """
         self.proc_start_time = time.time()
         self.rad = rad
-        self.dates = list(utils.reset_start_end_date(dates[0], dates[1]))
+        self.dates = dates#list(utils.reset_start_end_date(dates[0], dates[1]))
         self.load_params(self.dates)
         self.data_exists = False
         if not os.path.exists(self.fetch_file("raw")):

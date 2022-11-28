@@ -86,7 +86,7 @@ class Filter(object):
         min_pct_echoes - Minimum precentage of echoes per hour window per cell
         """
         self.proc_start_time = time.time()
-        dates = list(utils.reset_start_end_date(dates[0], dates[1]))
+        #dates = list(utils.reset_start_end_date(dates[0], dates[1]))
         self.load_params(dates)
         self.rad = rad
         self.dates = dates

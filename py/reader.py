@@ -90,14 +90,14 @@ class Folder(object):
                     txs = list(o[(o.bmnum == b) & (o.slist == g)].Tx.unique())
                     for t in txs:
                         if p == "rsamp":
-#                             times = list(
-#                                 o[(o.bmnum == b) & (o.slist == g) & (o.Tx == t)].time
-#                             )
-                            tmax, tmin = (
-                                o.time_window_end.iloc[0], 
-                                o.time_window_start.iloc[0]
+                            times = list(
+                                o[(o.bmnum == b) & (o.slist == g) & (o.Tx == t)].time
                             )
-                            #max(times), min(times)
+                            tmax, tmin = (
+                                max(times), min(times)
+                            )
+                            # o.time_window_end.iloc[0],
+                            # o.time_window_start.iloc[0]
                         else:
                             tmax, tmin = None, None
                         obj = {
@@ -176,8 +176,8 @@ class Reader(object):
             row = self.rbsp_logs.iloc[i]
             logger.info(f"Load entry #{i}, R({row.rad}):{row.stime}-{row.etime}")
             self.load_params([row.stime, row.etime])
-            stime, etime = utils.reset_start_end_date(row.stime, row.etime)
-            self.file_entries[i] = Folder(self.dirs, row.rad, stime, etime)
+            #stime, etime = utils.reset_start_end_date(row.stime, row.etime)
+            self.file_entries[i] = Folder(self.dirs, row.rad, row.stime, row.etime)
         return
 
     def get_stackplot_fname(self, select, Tx=0):
