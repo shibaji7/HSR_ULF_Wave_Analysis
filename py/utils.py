@@ -12,22 +12,21 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 
-import os
-import datetime as dt
-import numpy as np
-import glob
-from loguru import logger
 import configparser
+import datetime as dt
+import glob
+import json
+import os
+
+import numpy as np
+import paramiko
+import pydarn
+from cryptography.fernet import Fernet
+from geo import geoPack, rad_fov
+from loguru import logger
+from matplotlib.dates import date2num
 from scipy.optimize import curve_fit
 from scipy.stats.distributions import t
-from matplotlib.dates import date2num
-import paramiko
-import os
-from cryptography.fernet import Fernet
-import json
-import pydarn
-
-from geo import rad_fov, geoPack
 
 
 def compute_field_of_view_parameters(rad):
@@ -39,11 +38,13 @@ def compute_field_of_view_parameters(rad):
     hdw = pydarn.read_hdw_file(rad)
     ngates, nbeams = hdw.gates - 10, hdw.beams
     glats, glons = pydarn.Coords.GEOGRAPHIC(hdw.stid)
-    if ngates > glats.shape[0]: ngates = glats.shape[0]-1
-    if nbeams > glats.shape[1]: nbeams = glats.shape[1]-1
+    if ngates > glats.shape[0]:
+        ngates = glats.shape[0] - 1
+    if nbeams > glats.shape[1]:
+        nbeams = glats.shape[1] - 1
     azms = np.zeros((nbeams, ngates))
     for b in range(nbeams):
-        for g in range(ngates-1):
+        for g in range(ngates - 1):
             d = geoPack.calcDistPnt(
                 glats[g, b],
                 glons[g, b],
@@ -55,22 +56,14 @@ def compute_field_of_view_parameters(rad):
             azms[b, g] = d["az"]
     return glats, glons, azms
 
+
 def reset_start_end_date(stime, etime):
     """
     Reset start/end date
     """
-    stime = stime.replace(
-        second = 0,
-        microsecond = 0,
-        minute = 0
-    )
+    stime = stime.replace(second=0, microsecond=0, minute=0)
     hr = etime.hour + 1
-    etime = etime.replace(
-        second = 0,
-        microsecond = 0,
-        minute = 0,
-        hour = 0
-    )
+    etime = etime.replace(second=0, microsecond=0, minute=0, hour=0)
     etime = etime + dt.timedelta(hours=hr)
     return stime, etime
 

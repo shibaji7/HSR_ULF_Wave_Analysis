@@ -15,27 +15,27 @@ import sys
 
 sys.path.extend(["py/"])
 
-from plots import RangeTimeIntervalPlot as RTI
-import pydarn
-import aacgmv2
-from scipy.signal import get_window
-from scipy.fft import rfft, rfftfreq
+import datetime as dt
+import json
+import multiprocessing as mp
+import os
 import shutil
 import time
-from scipy.stats import t as T
-from scipy.interpolate import interp1d
-import json
-from functools import partial
-import multiprocessing as mp
-import pandas as pd
-import numpy as np
-import datetime as dt
-from loguru import logger
-import os
 import traceback
-import swifter
+from functools import partial
 
+import aacgmv2
+import numpy as np
+import pandas as pd
+import pydarn
+import swifter
 import utils as utils
+from loguru import logger
+from plots import RangeTimeIntervalPlot as RTI
+from scipy.fft import rfft, rfftfreq
+from scipy.interpolate import interp1d
+from scipy.signal import get_window
+from scipy.stats import t as T
 
 
 class Filter(object):
@@ -86,7 +86,7 @@ class Filter(object):
         min_pct_echoes - Minimum precentage of echoes per hour window per cell
         """
         self.proc_start_time = time.time()
-        #dates = list(utils.reset_start_end_date(dates[0], dates[1]))
+        # dates = list(utils.reset_start_end_date(dates[0], dates[1]))
         self.load_params(dates)
         self.rad = rad
         self.dates = dates
@@ -381,7 +381,10 @@ class Filter(object):
                             o["time_window_start"], o["time_window_end"] = tw[0], tw[1]
                             self.r_frame = pd.concat([self.r_frame, o])
                             fft = self.__run_fft__(o, b, r, tx, nechoes, Lx, len(ynew))
-                            fft["time_window_start"], fft["time_window_end"] = tw[0], tw[1]
+                            fft["time_window_start"], fft["time_window_end"] = (
+                                tw[0],
+                                tw[1],
+                            )
                             self.fft_frame = pd.concat([self.fft_frame, fft])
         if len(self.r_frame) > 0:
             self.log += f" Manipulate location information.\n"

@@ -14,17 +14,17 @@ __status__ = "Research"
 import sys
 
 sys.path.extend(["py/"])
-import utils as utils
+import matplotlib
+import matplotlib.colors as mcolors
+import matplotlib.dates as mdates
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
-import matplotlib.patches as mpatches
-from matplotlib.ticker import MultipleLocator
-import matplotlib.colors as mcolors
-import matplotlib.ticker as mticker
-import matplotlib.dates as mdates
+import utils as utils
 from matplotlib.dates import DateFormatter, num2date
-import matplotlib.pyplot as plt
-import matplotlib
+from matplotlib.ticker import MultipleLocator
 
 matplotlib.use("Agg")
 matplotlib.style.use(["science", "ieee"])

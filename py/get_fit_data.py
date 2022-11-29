@@ -15,15 +15,15 @@ import sys
 
 sys.path.extend(["py/"])
 
-import numpy as np
-import pandas as pd
+import bz2
 import datetime as dt
 import glob
-import bz2
-import pydarnio as pydarn
-from loguru import logger
 
+import numpy as np
+import pandas as pd
+import pydarnio as pydarn
 import utils as utils
+from loguru import logger
 
 
 class Gate(object):

@@ -19,13 +19,13 @@ __status__ = "Research"
 import sys
 
 sys.path.extend(["py/"])
+import datetime as dt
+
 import numpy as np
 import pyIGRF
 import swifter
-from loguru import logger
-import datetime as dt
-
 import utils as utils
+from loguru import logger
 
 
 def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):

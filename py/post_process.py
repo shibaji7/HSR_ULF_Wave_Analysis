@@ -16,13 +16,14 @@ import sys
 
 sys.path.extend(["py/"])
 
-from reader import Reader
 import os
+
 import numpy as np
 import pandas as pd
+from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
+from reader import Reader
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
-from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
 
 
 def narrowband_wave_finder(
@@ -173,7 +174,7 @@ def save_event_info(
                 Tn = rec["Tx"]
                 stime = rec["tmin"]
                 etime = rec["tmax"]
-                #re_stime, re_etime = round_to_nearest(stime, etime)
+                # re_stime, re_etime = round_to_nearest(stime, etime)
                 o_fft = r.file_entries[row].get_data(
                     p="fft", beams=[bm], gates=[gt], Tx=[Tn]
                 )
@@ -223,8 +224,8 @@ def save_event_info(
                         event_dic["gate"].append(gt)
                         event_dic["stime"].append(stime)
                         event_dic["etime"].append(etime)
-                        #event_dic["re_stime"].append(re_stime)
-                        #event_dic["re_etime"].append(re_etime)
+                        # event_dic["re_stime"].append(re_stime)
+                        # event_dic["re_etime"].append(re_etime)
                         event_dic["len"].append(len_df[N])
                         event_dic["intt"].append(intt_df[N])
 
@@ -269,9 +270,17 @@ def save_event_info(
     df = pd.DataFrame(event_dic)
     df.to_csv(fname, index=False)
 
+
 import time
+
 t = time.time()
-save_event_info(fname='tmp/201501_v_los_igrf.csv',stack_plot=False,
-               I_min=0.5,N_min=420,mag_type="igrf",E_method = "v_los",
-               rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt")
-print(time.time()-t)
+save_event_info(
+    fname="tmp/201501_v_los_igrf.csv",
+    stack_plot=False,
+    I_min=0.5,
+    N_min=420,
+    mag_type="igrf",
+    E_method="v_los",
+    rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt",
+)
+print(time.time() - t)

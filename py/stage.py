@@ -17,21 +17,22 @@ import sys
 
 sys.path.extend(["py/"])
 
-from get_fit_data import FetchData
-from functools import partial
-import multiprocessing as mp
-import pandas as pd
-import numpy as np
 import datetime as dt
+import json
+import multiprocessing as mp
+import os
+import shutil
+import sys
+import time
+import traceback
+from functools import partial
+
+import numpy as np
+import pandas as pd
+import utils as utils
+from get_fit_data import FetchData
 from loguru import logger
 from sklearn.cluster import DBSCAN
-import time
-import os
-import sys
-import shutil
-import utils as utils
-import traceback
-import json
 
 
 class DBScan(object):
@@ -81,7 +82,7 @@ class StagingUnit(object):
         """
         self.proc_start_time = time.time()
         self.rad = rad
-        self.dates = dates#list(utils.reset_start_end_date(dates[0], dates[1]))
+        self.dates = dates  # list(utils.reset_start_end_date(dates[0], dates[1]))
         self.load_params(self.dates)
         self.data_exists = False
         if not os.path.exists(self.fetch_file("raw")):
