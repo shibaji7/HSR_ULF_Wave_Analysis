@@ -92,28 +92,19 @@ def draw_conductance(dt, hemi,fluxtypes=['diff','mono']):
             fontweight='bold')
     return f,mlatgrid, mltgrid, pedgrid, hallgrid
 
-def save_conductance_csv(dt, hemi,fn_cond,fn_meta,fluxtypes=['diff','mono','wave']):
+def save_conductance_csv(dt, hemi,fn_cond,fluxtypes=['diff','mono','wave']):
     """
     Get the hall and pedersen conductance for one date and hemisphere
     and save to csv file
     """
     estimator = ConductanceEstimator(fluxtypes=fluxtypes)
 
-    mlatgrid, mltgrid, pedgrid, hallgrid, dF, f107 = estimator.get_conductance(
-        dt, hemi=hemi, auroral=True, solar=True,return_dF=True, return_f107=True)
+    mlatgrid, mltgrid, pedgrid, hallgrid = estimator.get_conductance(
+        dt, hemi=hemi, auroral=True, solar=True)
     df = pd.DataFrame({'mlatgrid':mlatgrid.flatten(),'mltgrid':mltgrid.flatten(),
                        'pedgrid':pedgrid.flatten(),'hallgrid':hallgrid.flatten()})
     df.to_csv(fn_cond, index=False, float_format='%.4f')
-    
-    with open(fn_meta,'a+') as f:
-        meta_row_data = []
-        meta_row_data.append(dt.strftime('%Y-%m-%dT%H:%M:%S'))
-        meta_row_data.append('{:0.3f}'.format(dF))
-        meta_row_data.append( '{:0.2f}'.format(f107))
-        meta_row_data.append(str(mlatgrid.shape[0]))
-        meta_row_data.append(str(mlatgrid.shape[1]))
-        csvrowline = ','.join(meta_row_data)+'\n' 
-        f.write(csvrowline)
+
         
 def save_wave_event_cond_batch(fn_wave='wave_info_db/201507_v_los_igrf.csv',
                                fn_new='wave_info_db/201507_v_los_igrf_cond.csv',
@@ -136,14 +127,8 @@ def save_wave_event_cond_batch(fn_wave='wave_info_db/201507_v_los_igrf.csv',
         fn_cond = os.path.join(homedir,fn1)
         #print(fn_cond)
         
-        fn2='op_dt_hemi_cond_meta_data.csv'
-        fn_meta=os.path.join(homedir,fn2)
-        #print(fn_meta)
-        
         if ~os.path.exists(fn_cond):
-            #print('File {} already exists'.format(fn_cond))
-        #else:
-            save_conductance_csv(tt, hemi,fn_cond,fn_meta,fluxtypes=fluxtypes)
+            save_conductance_csv(tt, hemi,fn_cond,fluxtypes=fluxtypes)
         
         df_cond = pd.read_csv(fn_cond)
         mlatgrid = np.array(df_cond['mlatgrid'])
