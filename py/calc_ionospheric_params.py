@@ -16,16 +16,52 @@ __maintainer__ = "Chakraborty, S."
 __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
+import os
 import sys
 
 sys.path.extend(["py/"])
 import datetime as dt
+import glob
+import json
+from types import SimpleNamespace
 
 import numpy as np
+import pandas as pd
 import pyIGRF
+import ray
 import swifter
 import utils as utils
 from loguru import logger
+from ovationpyme.ovation_prime import ConductanceEstimator
+
+
+@ray.remote
+def compute_conductivity_profile(folder, t, hemi, fluxtypes, auroral=True, solar=True):
+    """
+    Compute conductivity of each event.
+    """
+    file = os.path.join(
+        folder,
+        "op_dt_hemi.{}_cond_{}.csv".format(hemi, t.strftime("%Y%m%d_%H%M%S")),
+    )
+    logger.info(f"Populating {file}")
+    if not os.path.exists(file):
+        estimator = ConductanceEstimator(fluxtypes=fluxtypes)
+        mlatgrid, mltgrid, pedgrid, hallgrid = estimator.get_conductance(
+            t, hemi=hemi, auroral=auroral, solar=solar
+        )
+        o = pd.DataFrame(
+            {
+                "mlatgrid": mlatgrid.flatten(),
+                "mltgrid": mltgrid.flatten(),
+                "pedgrid": pedgrid.flatten(),
+                "hallgrid": hallgrid.flatten(),
+            }
+        )
+        o.to_csv(file, index=False, header=True, float_format="%g")
+    else:
+        o = pd.read_csv(file)
+    return {"time": t, "op": o}
 
 
 def compute_B_field(location, date, mag_type="igrf", Re=6371.0, B0=3.12e-5):
@@ -118,15 +154,12 @@ class EfieldMethods(object):
         return row
 
 
-class ComputeIonosphereicProperties(EfieldMethods):
+class ComputeIonosphereicEField(EfieldMethods):
     """
     This class is dedicated to cunsume SD velocity data,
     and compute following ionospheric parameter based on various
-    magnetic field and conductivity profiles.
+    magnetic field profiles.
         1. E-field
-        2. Conducitivity
-        3. Current density
-        4. Jule heating
     """
 
     def __init__(
@@ -171,27 +204,110 @@ class ComputeIonosphereicProperties(EfieldMethods):
         self.df = self.df.swifter.apply(func, axis=1)
         return
 
-    def compute_conductivity_profile(self):
-        """ """
+
+class ComputeIonosphereicConductivity(EfieldMethods):
+    """
+    This class is dedicated to cunsume SD velocity data,
+    and compute following ionospheric parameter based on various
+    magnetic field profiles.
+        1. Conductivity
+    """
+
+    def __init__(
+        self,
+        files=[],
+        hemi="N",
+        flux_types=["diff", "mono", "wave"],
+    ):
+        """
+        Parameters:
+        ----------
+        file_location: Location of the event files
+        hemi: Hemisphere
+        flux_types: List of all flux types in Ovation Prime
+        """
+        # Load Config File
+        with open("config/params.json") as f:
+            self.conf = json.load(f, object_hook=lambda x: SimpleNamespace(**x))
+        self.files = (
+            files
+            if len(files) > 0
+            else glob.glob(
+                self.conf.files.analysis.format(run_id=self.conf.run_id) + "*.csv"
+            )
+        )
+        self.hemi = hemi
+        self.flux_types = flux_types
+        # Ovationpime folder name
+        self.op_cond_file_location = os.path.join(
+            self.conf.files.analysis.format(run_id=self.conf.run_id), "op"
+        )
+        os.makedirs(self.op_cond_file_location, exist_ok=True)
+        # Initialize Ray
+        ray.init()
         return
 
-    def compute_current_density(self):
-        """ """
+    def compute_conductivities(self):
+        """
+        Compute conducttivities for all events
+        """
+        for f in self.files:
+            records = pd.read_csv(f, parse_dates=["stime", "etime"])
+            records["bin_time"] = records.stime + dt.timedelta(
+                minutes=60 * self.conf.filter.hour_win / 2
+            )
+            tmp = pd.DataFrame(
+                list(zip(records.bin_time.unique())), columns=["bin_time"]
+            )
+            tmp.bin_time = tmp.bin_time.apply(lambda t: t.to_pydatetime())
+            logger.info(f"Total number of records {len(records)}")
+            logger.info(
+                f"Total number of unique times {len(records.bin_time.unique())}"
+            )
+            # Run Parallel Ray to compute Conductivities
+            conductivities = []
+            for t in tmp.bin_time:
+                conductivities.append(
+                    compute_conductivity_profile.remote(
+                        self.op_cond_file_location, t, self.hemi, self.flux_types
+                    )
+                )
+            oplist = ray.get(conductivities)
+            del conductivities
+            self.conductivities = {}
+            for l in oplist:
+                self.conductivities[l["time"]] = l["op"]
+            logger.info(
+                f"Computed number of unique events {len(self.conductivities.keys())}"
+            )
+            # TODO: Run Parallel to populate locaion wise conductivity
+            records = records.apply(self.populate_conductivity, axis=1)
+            logger.info(f"Total number of processed records {len(records)}")
+            records.to_csv(f, index=False, header=True, float_format="%g")
         return
 
-    def compute_jule_heating(self):
-        """ """
-        return
+    def populate_conductivity(self, row):
+        """
+        Populate locaion wise conductivity
+        """
+        # Find the closest cell to locate conductance
+        time = row.bin_time
+        mlat = row.mlat
+        mlt = row.mlt
+        o = self.conductivities[time]
+        mlatgrid = np.array(o.mlatgrid)
+        mltgrid = np.array(o.mltgrid)
+        pedgrid = np.array(o.pedgrid)
+        hallgrid = np.array(o.hallgrid)
+        dist_tmp = np.sqrt((mlat - mlatgrid) ** 2 + (15 * (mlt - mltgrid)) ** 2)
+        cell_ind = np.argmin(dist_tmp)
+        row["op_mlat"] = mlatgrid[cell_ind]
+        row["op_mlt"] = mltgrid[cell_ind]
+        row["op_ped"] = pedgrid[cell_ind]
+        row["op_hall"] = hallgrid[cell_ind]
+        return row
 
 
 if __name__ == "__main__":
-    b = compute_B_field([0, 90, 0], dt.datetime(2015, 1, 1), mag_type="dipole")
-    logger.info(f"B-field from dipole: {b}")
-    b = compute_B_field([0, 90, 0], dt.datetime(2015, 1, 1), mag_type="igrf")
-    logger.info(f"B-field from igrf: {b}")
-    ### Example code to run vectorized E-field calculations
-    ## from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
-    ## cip = CIP(rad, r_frame, {"e_field": "v_los", "mag_type": "dipole"})
-    ## cpi.compute_efield()
-    ## r_frame = cpi.df.copy()
-    ###
+    cic = ComputeIonosphereicConductivity()
+    cic.compute_conductivities()

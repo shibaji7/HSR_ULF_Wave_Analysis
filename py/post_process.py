@@ -20,7 +20,7 @@ import os
 
 import numpy as np
 import pandas as pd
-from calc_ionospheric_params import ComputeIonosphereicProperties as CIP
+from calc_ionospheric_params import ComputeIonosphereicEField as CIE
 from reader import Reader
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
@@ -207,7 +207,7 @@ def save_event_info(
                         mlt_df = np.array(o_ts["mlt"])
                         len_df = np.array(o_ts["len"])
                         intt_df = np.array(o_ts["intt"])
-                        cip = CIP(
+                        cip = CIE(
                             rad, o_ts, {"e_field": E_method, "mag_type": mag_type}
                         )
                         cip.compute_efield()

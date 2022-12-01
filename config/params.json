@@ -50,6 +50,7 @@
     "arc_stage": "LFS/HSR_ULF_WAVE/stage/{date}/",
     "csv": "{rad}_{stime}_{etime}_%s.csv",
     "log": "{rad}_{stime}_{etime}_%s.log",
-    "rti_plot": "{rad}_{bm}_{stime}_{etime}.png"
+    "rti_plot": "{rad}_{bm}_{stime}_{etime}.png",
+    "analysis": "tmp/sd.run.{run_id}/analysis/"
   }
 }
