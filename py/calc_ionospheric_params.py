@@ -244,7 +244,7 @@ class ComputeIonosphereicConductivity(EfieldMethods):
         )
         os.makedirs(self.op_cond_file_location, exist_ok=True)
         # Initialize Ray
-        ray.init()
+        ray.init(num_cpus = 4)
         return
 
     def compute_conductivities(self):
