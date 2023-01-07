@@ -47,11 +47,8 @@ def raw_omni_to_hdf5():
                     float(values[31]),float(values[32]),float(values[33]),float(values[34]),float(values[35]),float(values[36]),
                     float(values[37]),float(values[38]),float(values[39]),float(values[40]),float(values[41]),float(values[42]),float(values[43]),
                     float(values[44]),float(values[45])])
-            pass
         _o = pd.DataFrame(linevalues, columns=header)
-        #_o.to_hdf(hdf5_fname, mode="w", key="df")
         _o.to_csv(hdf5_fname, header=True, index=False)
-        pass
     return
 
 
@@ -78,9 +75,7 @@ def raw_symh_to_hdf5():
                     float(values[3]), float(values[4]), float(values[5]), float(values[6])])
             pass
         _o = pd.DataFrame(linevalues, columns=header)
-        #_o.to_hdf(hdf5_fname, mode="w", key="df")
         _o.to_csv(hdf5_fname, header=True, index=False)
-        pass
     return
 
 ######################################################################################################
@@ -105,7 +100,7 @@ def raw_Kp_to_hdf5():
     return
 
 if __name__ == "__main__":
-    #raw_Kp_to_hdf5()
+    raw_Kp_to_hdf5()
     #raw_symh_to_hdf5()
-    raw_omni_to_hdf5()
+    #raw_omni_to_hdf5()
     pass

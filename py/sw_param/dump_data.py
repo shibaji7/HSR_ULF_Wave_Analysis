@@ -31,7 +31,7 @@ def ini():
 def download_omni_dataset():
     base_uri = "https://spdf.gsfc.nasa.gov/pub/data/omni/high_res_omni/monthly_1min/omni_min%d%02d.asc"
     base_storage = BASE_LOCATION + "omni/raw/%d%02d.asc"
-    for year in range(2012,2017):
+    for year in range(2012,2018):
         for month in range(1,13):
             f_path = base_storage%(year,month)
             if not os.path.exists(f_path):
@@ -69,13 +69,13 @@ def download_symH_dataset():
 ##############################################################################################
 def download_Kp_dataset():
     if not os.path.exists("tmp/data/geomag/Kp/raw/Kp.asc"):
-        cmd = "curl -o \"tmp/data/geomag/Kp/raw/Kp.asc\" --data \"SCent=20&STens=1&SYear=2&From=1&ECent=20&ETens=1&EYear=7&To=1&Email=shibaji7%40vt.edu\" http://wdc.kugi.kyoto-u.ac.jp/cgi-bin/kp-cgi"
+        cmd = "curl -o \"tmp/data/geomag/Kp/raw/Kp.asc\" --data \"SCent=20&STens=1&SYear=2&From=1&ECent=20&ETens=1&EYear=8&To=1&Email=shibaji7%40vt.edu\" http://wdc.kugi.kyoto-u.ac.jp/cgi-bin/kp-cgi"
         os.system(cmd)
     return
  
 if __name__ == "__main__":
     ini()
     download_Kp_dataset()
-    download_symH_dataset()
+    #download_symH_dataset()
     download_omni_dataset()    
     pass

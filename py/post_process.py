@@ -24,6 +24,8 @@ from calc_ionospheric_params import ComputeIonosphereicEField as CIE
 from reader import Reader
 from scipy import stats
 from scipy.signal import find_peaks, peak_widths
+import time
+import glob
 
 
 def narrowband_wave_finder(
@@ -271,16 +273,27 @@ def save_event_info(
     df.to_csv(fname, index=False)
 
 
-import time
 
-t = time.time()
-save_event_info(
-    fname="tmp/201501_v_los_igrf.csv",
-    stack_plot=False,
-    I_min=0.5,
-    N_min=420,
-    mag_type="igrf",
-    E_method="v_los",
-    rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt",
-)
-print(time.time() - t)
+def _run_():
+    files = glob.glob("config/logs/*.txt")
+    files.sort()
+    for f in files:
+        ud = f.replace(".txt", "").split("_")[-1]
+        fname = f"tmp/sd.run.13/analysis/{ud}_v_los_igrf.csv"
+        print(fname)
+        if not os.path.exists(fname):
+            t = time.time()
+            save_event_info(
+                fname=fname,
+                stack_plot=False,
+                I_min=0.5,
+                N_min=420,
+                mag_type="igrf",
+                E_method="v_los",
+                rbsp_log_fn=f.split("/")[-1],
+            )
+            print(time.time() - t)
+
+if __name__ == "__main__":
+    # Running all pre_processed files
+    _run_()
