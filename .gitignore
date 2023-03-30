@@ -18,6 +18,7 @@ __pycache__/
 *.csv*
 *.png*
 *.jpg*
+*.ipynb
 
 # Distribution / packaging
 .Python
