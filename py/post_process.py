@@ -16,16 +16,15 @@ import sys
 
 sys.path.extend(["py/"])
 
+import glob
 import os
+import time
 
 import numpy as np
 import pandas as pd
 from calc_ionospheric_params import ComputeIonosphereicEField as CIE
 from reader import Reader
 from scipy import stats
-from scipy.signal import find_peaks, peak_widths
-import time
-import glob
 
 
 def narrowband_wave_finder(
@@ -273,7 +272,6 @@ def save_event_info(
     df.to_csv(fname, index=False)
 
 
-
 def _run_():
     files = glob.glob("config/logs/*.txt")
     files.sort()
@@ -293,6 +291,7 @@ def _run_():
                 rbsp_log_fn=f.split("/")[-1],
             )
             print(time.time() - t)
+
 
 if __name__ == "__main__":
     # Running all pre_processed files

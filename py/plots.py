@@ -15,16 +15,13 @@ import sys
 
 sys.path.extend(["py/"])
 import matplotlib
-import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 import utils as utils
-from matplotlib.dates import DateFormatter, num2date
-from matplotlib.ticker import MultipleLocator
+from matplotlib.dates import DateFormatter
 
 matplotlib.use("Agg")
 matplotlib.style.use(["science", "ieee"])
@@ -265,7 +262,6 @@ class RangeTimeIntervalPlot(object):
         """
         Add a colorbar to the right of an axis.
         """
-        import matplotlib as mpl
 
         pos = ax.get_position()
         cpos = [

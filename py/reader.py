@@ -20,7 +20,6 @@ sys.path.extend(["py/"])
 import json
 import os
 
-import numpy as np
 import pandas as pd
 import utils as utils
 from loguru import logger

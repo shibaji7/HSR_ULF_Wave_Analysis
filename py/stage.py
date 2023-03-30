@@ -21,7 +21,6 @@ import datetime as dt
 import json
 import multiprocessing as mp
 import os
-import shutil
 import sys
 import time
 import traceback
@@ -254,4 +253,3 @@ if __name__ == "__main__":
     StagingHopper(run_first=None)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
-    pass

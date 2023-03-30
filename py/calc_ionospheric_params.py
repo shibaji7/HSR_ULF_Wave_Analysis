@@ -29,7 +29,6 @@ import numpy as np
 import pandas as pd
 import pyIGRF
 import ray
-import swifter
 import utils as utils
 from loguru import logger
 from ovationpyme.ovation_prime import ConductanceEstimator
@@ -244,7 +243,7 @@ class ComputeIonosphereicConductivity(EfieldMethods):
         )
         os.makedirs(self.op_cond_file_location, exist_ok=True)
         # Initialize Ray
-        ray.init(num_cpus = 4)
+        ray.init(num_cpus=4)
         return
 
     def compute_conductivities(self):

@@ -28,7 +28,6 @@ import aacgmv2
 import numpy as np
 import pandas as pd
 import pydarn
-import swifter
 import utils as utils
 from loguru import logger
 from plots import RangeTimeIntervalPlot as RTI
@@ -674,4 +673,3 @@ if __name__ == "__main__":
     DataFetcherFilter(run_first=None)
     end = time.time()
     logger.info(f" Interval time {np.round(end - start, 2)} sec.")
-    pass
