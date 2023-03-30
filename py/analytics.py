@@ -489,7 +489,7 @@ class StackPlots(object):
         cb.set_label(label)
         return
     
-    def add_time_series(self, kind="rsamp"):
+    def add_time_series(self, kind="rsamp", ylim=[-1000, 1000]):
         ax = self.set_labels(
             self.set_time_axis(
                 self.create_axes()
@@ -513,7 +513,7 @@ class StackPlots(object):
         ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
-        ax.set_ylim(-500, 500)
+        ax.set_ylim(ylim)
         return
     
     def add_fft(self):
