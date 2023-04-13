@@ -504,8 +504,8 @@ class StackPlots(object):
         data = data[
             (data.slist == self.ts.event.gate)
             & (data.bmnum == self.ts.event.beam)
-            & (data.time_window_start >= self.ts.stime)
-            & (data.time_window_end <= self.ts.etime)
+            & (data.time_window_start == self.ts.event.stime)
+            #& (data.time_window_end <= self.ts.etime)
         ]
         ax.plot(data.frq * 1e3, data.amp, "ko", ls="None", ms=0.5)
         ax.set_xlim(0, 30)
