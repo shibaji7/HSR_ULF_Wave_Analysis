@@ -308,7 +308,7 @@ class TimeSeriesAnalysis(object):
         """
         Load RBSP dataset
         """
-        self.fd = FetchData(self.event.rad, [self.stime, self.etime])
+        self.fd = FetchData(self.event.rad, [self.stime, self.etime], ftype="fitacf3")
         _, scans, exists = self.fd.fetch_data(by="scan")
         self.sdframe = self.fd.scans_to_pandas(scans)
         return
