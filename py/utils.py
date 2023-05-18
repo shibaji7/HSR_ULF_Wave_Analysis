@@ -25,8 +25,30 @@ from cryptography.fernet import Fernet
 from geo import geoPack, rad_fov
 from loguru import logger
 from matplotlib.dates import date2num
+from scipy import stats
 from scipy.optimize import curve_fit
 from scipy.stats.distributions import t
+
+
+def despike_mad(data, num=6, scale="normal"):
+    """
+    despike a time series based on median absolute deviation
+    inputs:
+    data: data to be despiked
+    num: number of median absoute deviations for despiking, default is 6
+    outputs:
+    good_data: good data with outliers removed
+    good_ind: index of good data in the original data
+    num_bad_data: number of bad dataset
+    """
+    mad = stats.median_abs_deviation(data, scale=scale)
+    median_data = np.median(data)
+
+    good_ind = (data <= median_data + mad * num) & (data >= median_data - mad * num)
+    good_data = data[good_ind]
+    num_bad_data = len(data[~good_ind])
+
+    return good_data, good_ind, num_bad_data
 
 
 def compute_field_of_view_parameters(rad):

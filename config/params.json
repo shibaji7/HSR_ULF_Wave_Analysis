@@ -1,5 +1,5 @@
 {
-  "run_id": 13,
+  "run_id": 14,
   "ftype": "fitacf3",
   "stage_arc": false,
   "remove_local": false,
@@ -12,6 +12,8 @@
     "min_no_echoes": 60,
     "min_pct_echoes": 0.5,
     "max_tdiff": 6,
+    "despike_sigma": 6,
+    "despike_scale": "normal",
     "fit": {
       "kind": "linear",
       "dod": 2,

@@ -35,6 +35,7 @@ from scipy.fft import rfft, rfftfreq
 from scipy.interpolate import interp1d
 from scipy.signal import get_window
 from scipy.stats import t as T
+import swifter
 
 
 class Filter(object):
@@ -249,7 +250,17 @@ class Filter(object):
                     if (len(fil_frame) < nechoes) or (max_tdiff >= self.max_tdiff):
                         add_frame = False
                 if add_frame:
-                    self.fil_frame = pd.concat([self.fil_frame, fil_frame])
+                    # TODO Despike
+                    ufil_frame = pd.DataFrame()
+                    for b in fil_frame.bmnum.unique():
+                        for rg in fil_frame.slist.unique():
+                            o = fil_frame[
+                                (fil_frame.bmnum==b) &
+                                (fil_frame.slist==rg)
+                            ]
+                            o = self.remove_spike(o)
+                            ufil_frame = pd.concat([ufil_frame, o])
+                    self.fil_frame = pd.concat([self.fil_frame, ufil_frame])
         logger.info(f" RBSP total data after filter {len(self.fil_frame)}")
         self.log += f" RBSP total data after filter {len(self.fil_frame)}\n"
 
@@ -378,6 +389,8 @@ class Filter(object):
                                 len(ynew),
                             )
                             o["time_window_start"], o["time_window_end"] = tw[0], tw[1]
+                            # TODO Despike
+                            o = self.despike_data(o, b, r)
                             self.r_frame = pd.concat([self.r_frame, o])
                             fft = self.__run_fft__(o, b, r, tx, nechoes, Lx, len(ynew))
                             fft["time_window_start"], fft["time_window_end"] = (
@@ -390,6 +403,33 @@ class Filter(object):
             self.r_frame["rad"] = self.rad
             self.r_frame = self.r_frame.swifter.apply(self.__get_magnetic_loc__, axis=1)
         return
+    
+    
+    def remove_spike(self, o, replace=False):
+        """
+        Remove the spikes from the data, replace with nan if set
+        """
+        _, good_ind, num_bad_data = utils.despike_mad(np.array(o[self.param]), self.despike_sigma, self.despike_scale)
+        if num_bad_data > 0:
+            if replace:
+                param = np.array(o[self.param])
+                param[~good_ind] = np.nan
+                o[self.param] = param
+            else:
+                o = o.iloc[good_ind, :]
+        return o
+    
+    def despike_data(self, o, bm, rg):
+        """
+        Despike the dataset
+        """
+        o = self.remove_spike(o, True)
+        total_nans = o[self.param].isnull().values.sum()
+        if total_nans > 0:
+            logger.warning(f"{bm}/{rg} Len inside despike: {len(o)}, with NaN: {total_nans}")
+            o[self.param] = o.set_index("time")[self.param].interpolate(method="linear").bfill().ffill().values
+            logger.info(f"{bm}/{rg} Len after despike: {len(o)}, with NaN: {o[self.param].isnull().values.sum()}")
+        return o
 
     def estimate_spred(self, f, x, y, xnew):
         """

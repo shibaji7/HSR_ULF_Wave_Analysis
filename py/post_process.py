@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 from calc_ionospheric_params import ComputeIonosphereicEField as CIE
 from reader import Reader
-from scipy import stats
 
 
 def narrowband_wave_finder(
@@ -97,25 +96,6 @@ def narrowband_wave_finder(
                 I_sig,
                 peak_ang,
             )
-
-
-def despike_mad(data, num=6, scale="normal"):
-    """
-    despike a time series based on median absolute deviation
-    inputs:
-    data: data to be despiked
-    num: number of median absoute deviations for despiking, default is 6
-    outputs:
-    good_data: good data with outliers removed
-    good_ind: index of good data in the original data
-    """
-    mad = stats.median_abs_deviation(data, scale=scale)
-    median_data = np.median(data)
-
-    good_ind = (data <= median_data + mad * num) & (data >= median_data - mad * num)
-    good_data = data[good_ind]
-
-    return good_data, good_ind
 
 
 def save_event_info(
@@ -277,7 +257,7 @@ def _run_():
     files.sort()
     for f in files:
         ud = f.replace(".txt", "").split("_")[-1]
-        fname = f"tmp/sd.run.13/analysis/{ud}_v_los_igrf.csv"
+        fname = f"tmp/sd.run.14/analysis/{ud}_v_los_igrf.csv"
         print(fname)
         if not os.path.exists(fname):
             t = time.time()
