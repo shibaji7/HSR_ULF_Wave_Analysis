@@ -19,6 +19,8 @@ sys.path.extend(["py/"])
 import glob
 import os
 import time
+from multiprocessing.pool import Pool
+from loguru import logger
 
 import numpy as np
 import pandas as pd
@@ -54,8 +56,6 @@ def narrowband_wave_finder(
     peak_psd = psd[peaks]
     peak_phase = phase[peaks]
     sig_ind = np.where((peak_f >= fl_s) & (peak_f <= fh_s))
-    # print(sig_ind)
-    # print(peak_psd)
 
     if np.size(sig_ind) == 0:
         return None
@@ -98,6 +98,155 @@ def narrowband_wave_finder(
             )
 
 
+def generate_stack_plot(
+    o_ts, o_fft, stack_plot, bm, gt, rad, stime, etime, wave_event, I_min, N, N_min
+):
+    # Stack plots
+    if (
+        (stack_plot == True)
+        and (wave_event[7] > I_min)
+        and (len_df[N] * intt_df[N] >= N_min)
+    ):
+        frames = [
+            {
+                "p": "rsamp",
+                "df": o_ts,
+                "title": rad + ", Beam " + str(bm) + ", Gate " + str(gt) + ", RSamp",
+            },
+            {
+                "p": "fft",
+                "df": o_fft,
+                "title": rad + ", Beam " + str(bm) + ", Gate " + str(gt) + ", FFT",
+            },
+        ]
+
+        fig_name = "hpPc5_event_{rad}_{stime}_{etime}_b{beam}_g{gate}.png".format(
+            rad=rad,
+            stime=stime.strftime("%Y%m%d-%H%M"),
+            etime=etime.strftime("%Y%m%d-%H%M"),
+            beam=bm,
+            gate=gt,
+        )
+        r.generate_stacks(frames, fig_name)
+    return
+
+
+def compute_Efield_each_entry(event):
+    """
+    This method invoked from
+    `save_event_info` method by parallel proc
+    """
+    # Set all objects/parameters
+    (
+        index,
+        rad,
+        rbsp_log_fn,
+        row,
+        bm,
+        gt,
+        Tn,
+        stime,
+        etime,
+        E_method,
+        mag_type,
+        stack_plot,
+        I_min,
+        N_min,
+    ) = event
+    logger.info(f"Running event number: {index}")
+    # Create a reader object that reads all the RBSP mode entries
+    r = Reader(_filestr="config/logs/" + rbsp_log_fn)
+    r.parse_files(select=[row])
+    o_fft = r.file_entries[row].get_data(p="fft", beams=[bm], gates=[gt], Tx=[Tn])
+
+    event_dic = {
+        "FWHM": None,
+        "f_left_ind": None,
+        "f_right_ind": None,
+        "peak_psd": None,
+        "peak_freq": None,
+        "peak_ang": None,
+        "S_sig": None,
+        "S_total": None,
+        "I_sig": None,
+        "mlat": None,
+        "mlon": None,
+        "mlt": None,
+        "rad": None,
+        "beam": None,
+        "gate": None,
+        "stime": None,
+        "etime": None,
+        "len": None,
+        "intt": None,
+        "Erms": None,
+        "num_bad_data_rsamp": None,
+        "isValid": False,
+    }
+
+    if (not o_fft.empty) and (not o_fft["amp"].isnull().values.any()):
+        o_ts = r.file_entries[row].get_data(p="rsamp", beams=[bm], gates=[gt], Tx=[Tn])
+
+        # Find narrowband Pc5 event
+        freqs = np.array(o_fft.frq)
+        psd = np.array(18.0 / 100 * o_fft.amp**2)
+        phase = np.array(o_fft.ang)
+        wave_event = narrowband_wave_finder(freqs, psd, phase)
+
+        if wave_event:
+            event_dic["isValid"] = True
+            event_dic["FWHM"] = wave_event[0]
+            event_dic["f_left_ind"] = wave_event[1]
+            event_dic["f_right_ind"] = wave_event[2]
+            event_dic["peak_psd"] = wave_event[3]
+            event_dic["peak_freq"] = wave_event[4]
+            event_dic["S_sig"] = wave_event[5]
+            event_dic["S_total"] = wave_event[6]
+            event_dic["I_sig"] = wave_event[7]
+            event_dic["peak_ang"] = wave_event[8]
+
+            N = int(len(o_ts.v) / 2)
+            mlat_df = np.array(o_ts["mlat"])
+            mlon_df = np.array(o_ts["mlon"])
+            mlt_df = np.array(o_ts["mlt"])
+            len_df = np.array(o_ts["len"])
+            intt_df = np.array(o_ts["intt"])
+            cip = CIE(rad, o_ts, {"e_field": E_method, "mag_type": mag_type})
+            cip.compute_efield()
+            r_frame = cip.df.copy()
+            E_VXB = np.array(r_frame["E_vlos"])
+            E_rms = np.sqrt(np.sum(np.square(E_VXB)) / N)
+
+            event_dic["num_bad_data_rsamp"] = o_ts["num_bad_data_rsamp"].tolist()[0]
+            event_dic["Erms"] = E_rms
+            event_dic["mlat"] = mlat_df[N]
+            event_dic["mlon"] = mlon_df[N]
+            event_dic["mlt"] = mlt_df[N]
+            event_dic["rad"] = rad
+            event_dic["beam"] = bm
+            event_dic["gate"] = gt
+            event_dic["stime"] = stime
+            event_dic["etime"] = etime
+            event_dic["len"] = len_df[N]
+            event_dic["intt"] = intt_df[N]
+
+            generate_stack_plot(
+                o_ts,
+                o_fft,
+                stack_plot,
+                bm,
+                gt,
+                rad,
+                stime,
+                etime,
+                wave_event,
+                I_min,
+                N,
+                N_min,
+            )
+    return event_dic
+
+
 def save_event_info(
     fname="tmp/201501_v_los_igrf.csv",
     stack_plot=False,
@@ -106,6 +255,7 @@ def save_event_info(
     E_method="v_los",
     mag_type="igrf",
     rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt",
+    pcores = 8,
 ):
     """
     save events identified by the narrowband_wave_finder into a csv file
@@ -117,10 +267,9 @@ def save_event_info(
 
     # Create a reader object that reads all the RBSP mode entries
     r = Reader(_filestr="config/logs/" + rbsp_log_fn)
-    # Check for entries
-    # o = r.check_entries(rad="bks")
+    # Check for all entries
     o = r.check_entries()
-    event_dic = {
+    event_dics = {
         "FWHM": [],
         "f_left_ind": [],
         "f_right_ind": [],
@@ -141,115 +290,56 @@ def save_event_info(
         "len": [],
         "intt": [],
         "Erms": [],
+        "num_bad_data_rsamp": [],
     }
-
+    pool = Pool(pcores)
+    base_events = []
+    
+    index = 0
     for row in o.index:
         r.parse_files(select=[row])
         filt_dict = r.file_entries[row].filters
+
         if filt_dict:
             entry = r.rbsp_logs.iloc[row]
             rad = entry.rad
+            
             for rec in filt_dict["rsamp"]:
                 bm = rec["beam"]
                 gt = rec["gate"]
                 Tn = rec["Tx"]
                 stime = rec["tmin"]
                 etime = rec["tmax"]
-                # re_stime, re_etime = round_to_nearest(stime, etime)
-                o_fft = r.file_entries[row].get_data(
-                    p="fft", beams=[bm], gates=[gt], Tx=[Tn]
-                )
 
-                if (not o_fft.empty) and (not o_fft["amp"].isnull().values.any()):
-                    o_ts = r.file_entries[row].get_data(
-                        p="rsamp", beams=[bm], gates=[gt], Tx=[Tn]
+                base_events.append(
+                    (
+                        index,
+                        rad,
+                        rbsp_log_fn,
+                        row,
+                        bm,
+                        gt,
+                        Tn,
+                        stime,
+                        etime,
+                        E_method,
+                        mag_type,
+                        stack_plot,
+                        I_min,
+                        N_min,
                     )
-
-                    # Find narrowband Pc5 event
-                    freqs = np.array(o_fft.frq)
-                    psd = np.array(18.0 / 100 * o_fft.amp**2)
-                    phase = np.array(o_fft.ang)
-                    wave_event = narrowband_wave_finder(freqs, psd, phase)
-
-                    if wave_event:
-                        event_dic["FWHM"].append(wave_event[0])
-                        event_dic["f_left_ind"].append(wave_event[1])
-                        event_dic["f_right_ind"].append(wave_event[2])
-                        event_dic["peak_psd"].append(wave_event[3])
-                        event_dic["peak_freq"].append(wave_event[4])
-                        event_dic["S_sig"].append(wave_event[5])
-                        event_dic["S_total"].append(wave_event[6])
-                        event_dic["I_sig"].append(wave_event[7])
-                        event_dic["peak_ang"].append(wave_event[8])
-
-                        N = int(len(o_ts.v) / 2)
-                        mlat_df = np.array(o_ts["mlat"])
-                        mlon_df = np.array(o_ts["mlon"])
-                        mlt_df = np.array(o_ts["mlt"])
-                        len_df = np.array(o_ts["len"])
-                        intt_df = np.array(o_ts["intt"])
-                        cip = CIE(
-                            rad, o_ts, {"e_field": E_method, "mag_type": mag_type}
-                        )
-                        cip.compute_efield()
-                        r_frame = cip.df.copy()
-                        E_VXB = np.array(r_frame["E_vlos"])
-                        E_rms = np.sqrt(np.sum(np.square(E_VXB)) / N)
-
-                        event_dic["Erms"].append(E_rms)
-                        event_dic["mlat"].append(mlat_df[N])
-                        event_dic["mlon"].append(mlon_df[N])
-                        event_dic["mlt"].append(mlt_df[N])
-                        event_dic["rad"].append(entry.rad)
-                        event_dic["beam"].append(bm)
-                        event_dic["gate"].append(gt)
-                        event_dic["stime"].append(stime)
-                        event_dic["etime"].append(etime)
-                        # event_dic["re_stime"].append(re_stime)
-                        # event_dic["re_etime"].append(re_etime)
-                        event_dic["len"].append(len_df[N])
-                        event_dic["intt"].append(intt_df[N])
-
-                        # Stack plots
-                        if (
-                            (stack_plot == True)
-                            and (wave_event[7] > I_min)
-                            and (len_df[N] * intt_df[N] >= N_min)
-                        ):
-                            frames = [
-                                {
-                                    "p": "rsamp",
-                                    "df": o_ts,
-                                    "title": rad
-                                    + ", Beam "
-                                    + str(bm)
-                                    + ", Gate "
-                                    + str(gt)
-                                    + ", RSamp",
-                                },
-                                {
-                                    "p": "fft",
-                                    "df": o_fft,
-                                    "title": rad
-                                    + ", Beam "
-                                    + str(bm)
-                                    + ", Gate "
-                                    + str(gt)
-                                    + ", FFT",
-                                },
-                            ]
-
-                            fig_name = "hpPc5_event_{rad}_{stime}_{etime}_b{beam}_g{gate}.png".format(
-                                rad=entry.rad,
-                                stime=stime.strftime("%Y%m%d-%H%M"),
-                                etime=etime.strftime("%Y%m%d-%H%M"),
-                                beam=bm,
-                                gate=gt,
-                            )
-                            r.generate_stacks(frames, fig_name)
-
-    df = pd.DataFrame(event_dic)
-    df.to_csv(fname, index=False)
+                )
+                index += 1
+    logger.info(f"Total events to be processed: {len(base_events)}")
+    # Running parallel loop
+    for proc_event in pool.map(compute_Efield_each_entry, base_events):
+        if proc_event["isValid"]:
+            for key in list(event_dics.keys()):
+                event_dics[key].append(proc_event[key])
+    df = pd.DataFrame(event_dics)
+    logger.info(f"Processed event details: \n{df.head()}")
+    df.to_csv(fname, index=False, header=True, float_format="%g")
+    return
 
 
 def _run_():
@@ -258,7 +348,7 @@ def _run_():
     for f in files:
         ud = f.replace(".txt", "").split("_")[-1]
         fname = f"tmp/sd.run.14/analysis/{ud}_v_los_igrf.csv"
-        print(fname)
+        logger.info(f"Running file: {fname}")
         if not os.path.exists(fname):
             t = time.time()
             save_event_info(
@@ -270,7 +360,7 @@ def _run_():
                 E_method="v_los",
                 rbsp_log_fn=f.split("/")[-1],
             )
-            print(time.time() - t)
+            logger.info(f"Time taken to processes: {time.time() - t}")
 
 
 if __name__ == "__main__":
