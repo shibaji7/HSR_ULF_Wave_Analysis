@@ -15,7 +15,7 @@
     "despike_sigma": 6,
     "despike_scale": "normal",
     "fit": {
-      "kind": "linear",
+      "kind": "cubic",
       "dod": 2,
       "sig": 0.025
     },

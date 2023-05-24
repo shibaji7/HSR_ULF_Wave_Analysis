@@ -239,9 +239,7 @@ class ComputeIonosphereicConductivity(EfieldMethods):
         self.hemi = hemi
         self.flux_types = flux_types
         # Ovationpime folder name
-        self.op_cond_file_location = os.path.join(
-            self.conf.files.analysis.format(run_id=self.conf.run_id), "op"
-        )
+        self.op_cond_file_location = "tmp/op/"
         os.makedirs(self.op_cond_file_location, exist_ok=True)
         # Initialize Ray
         ray.init(num_cpus=4)
