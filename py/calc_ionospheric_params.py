@@ -32,7 +32,6 @@ import ray
 import utils as utils
 from loguru import logger
 from ovationpyme.ovation_prime import ConductanceEstimator
-import swifter
 
 
 @ray.remote
@@ -282,6 +281,7 @@ class ComputeIonosphereicConductivity(EfieldMethods):
             records = records.apply(self.populate_conductivity, axis=1)
             logger.info(f"Total number of processed records {len(records)}")
             records.to_csv(f, index=False, header=True, float_format="%g")
+        ray.shutdown()
         return
 
     def populate_conductivity(self, row):

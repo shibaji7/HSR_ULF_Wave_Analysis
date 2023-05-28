@@ -35,8 +35,6 @@ from scipy.fft import rfft, rfftfreq
 from scipy.interpolate import interp1d
 from scipy.signal import get_window
 from scipy.stats import t as T
-import swifter
-import random
 
 
 class Filter(object):
@@ -344,26 +342,27 @@ class Filter(object):
                                 o.time.swifter.apply(
                                     lambda t: t.hour * 3600 + t.minute * 60 + t.second
                                 )
-                            ), np.array(o[self.param])                            
+                            ), np.array(o[self.param])
                             xnew = [
-                                (tw[0].hour*3600 + tw[0].minute*60 + tw[0].second) + (i * self.ts) 
+                                (tw[0].hour * 3600 + tw[0].minute * 60 + tw[0].second)
+                                + (i * self.ts)
                                 for i in range(int(200 * tdiff))
                             ]
                             x, y = x[~np.isnan(y)], y[~np.isnan(y)]
                             ###
-                            # Reset 'Start' at the start of the time window 
+                            # Reset 'Start' at the start of the time window
                             # OR
                             # At the start time of the data frame of that time window
                             # start = o.time.tolist()[0] <|vs|> start = tw[0]
                             # This should reflect on xnew on line 347
                             ####
-                            start = tw[0] # o.time.tolist()[0]
+                            start = tw[0]  # o.time.tolist()[0]
                             tnew = [
                                 start + dt.timedelta(seconds=i * self.ts)
                                 for i in range(int(200 * tdiff))
                             ]
                             if len(xnew) > len(x):
-                                fill_value = "extrapolate"#random.choices(y, k=len(xnew)-len(x))
+                                fill_value = "extrapolate"  # random.choices(y, k=len(xnew)-len(x))
                             else:
                                 fill_value = "extrapolate"
                             f = interp1d(
@@ -729,20 +728,22 @@ class DataFetcherFilter(object):
         for f in p0.map(partial_filter, rlist):
             self.flist.append(f)
         return
-    
+
     def _run_by_entry_(self, rad, stime, etime):
         """
         Run single event
         """
         rbsp_logs = pd.DataFrame.from_records(self.rbsp_logs)
         rbsp_logs = rbsp_logs[
-            (rbsp_logs.rad==rad)
-            & (rbsp_logs.stime>=stime)
-            & (rbsp_logs.stime<=etime)
+            (rbsp_logs.rad == rad)
+            & (rbsp_logs.stime >= stime)
+            & (rbsp_logs.stime <= etime)
         ]
         records = list(rbsp_logs.to_dict("index").values())
         if len(records) > 0:
-            logger.info(f"Start parallel procs for {rad}:{stime}-{etime} entry {records[0]}")
+            logger.info(
+                f"Start parallel procs for {rad}:{stime}-{etime} entry {records[0]}"
+            )
             self._proc(records[0])
         return
 
@@ -753,16 +754,8 @@ if __name__ == "__main__":
     start = time.time()
     df = DataFetcherFilter(run_first=None)
     if run_individual_events:
-        df._run_by_entry_(
-            "cly",
-            dt.datetime(2015,5,19),
-            dt.datetime(2015,5,20)
-        )
-        df._run_by_entry_(
-            "kap",
-            dt.datetime(2015,1,7),
-            dt.datetime(2015,1,8)
-        )
+        df._run_by_entry_("cly", dt.datetime(2015, 5, 19), dt.datetime(2015, 5, 20))
+        df._run_by_entry_("kap", dt.datetime(2015, 1, 7), dt.datetime(2015, 1, 8))
     else:
         df._run()
     end = time.time()

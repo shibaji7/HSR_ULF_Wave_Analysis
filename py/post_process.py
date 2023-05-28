@@ -14,17 +14,18 @@ __status__ = "Research"
 
 import sys
 
-sys.path.extend(["py/"])
+sys.path.extend(["py/", "py/sw_param/"])
 
 import glob
 import os
 import time
 from multiprocessing.pool import Pool
-from loguru import logger
 
 import numpy as np
 import pandas as pd
+from calc_ionospheric_params import ComputeIonosphereicConductivity
 from calc_ionospheric_params import ComputeIonosphereicEField as CIE
+from loguru import logger
 from reader import Reader
 
 
@@ -255,7 +256,7 @@ def save_event_info(
     E_method="v_los",
     mag_type="igrf",
     rbsp_log_fn="RBSP_Mode_NH_Radars_Log_201501.txt",
-    pcores = 8,
+    pcores=8,
 ):
     """
     save events identified by the narrowband_wave_finder into a csv file
@@ -294,7 +295,7 @@ def save_event_info(
     }
     pool = Pool(pcores)
     base_events = []
-    
+
     index = 0
     for row in o.index:
         r.parse_files(select=[row])
@@ -303,7 +304,7 @@ def save_event_info(
         if filt_dict:
             entry = r.rbsp_logs.iloc[row]
             rad = entry.rad
-            
+
             for rec in filt_dict["rsamp"]:
                 bm = rec["beam"]
                 gt = rec["gate"]
@@ -361,6 +362,9 @@ def _run_():
                 rbsp_log_fn=f.split("/")[-1],
             )
             logger.info(f"Time taken to processes: {time.time() - t}")
+    cic = ComputeIonosphereicConductivity()
+    cic.compute_conductivities()
+    return
 
 
 if __name__ == "__main__":
