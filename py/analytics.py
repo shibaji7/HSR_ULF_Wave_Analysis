@@ -33,7 +33,8 @@ class Stats(object):
         loc,
         parse_dates=["stime", "etime", "bin_time"],
         Ndpint_threshold=420,
-        I_sig_trhreshold=0.5,
+        I_sig_threshold=0.6,
+        bdr_threshold=3,
     ):
         """
         Parameters:
@@ -50,14 +51,16 @@ class Stats(object):
         self.D["jhr"] = self.D.op_ped * self.D.Erms**2 * 1000.0  # mW/m^2
         self.D.Erms = self.D.Erms * 1000.0  # mV
         self.Ndpint_threshold = Ndpint_threshold
-        self.I_sig_trhreshold = I_sig_trhreshold
+        self.I_sig_threshold = I_sig_threshold
+        self.bdr_threshold = bdr_threshold
         return
 
     def get_valid_events(
         self,
         key="jhr",
         Ndpint_threshold=None,
-        I_sig_trhreshold=None,
+        I_sig_threshold=None,
+        bdr_threshold=None,
     ):
         """
         Fetch an event based on Ndpint_threshold and I_sig_trhreshold
@@ -65,14 +68,21 @@ class Stats(object):
         Ndpint_threshold = (
             Ndpint_threshold if Ndpint_threshold else self.Ndpint_threshold
         )
-        I_sig_trhreshold = (
-            I_sig_trhreshold if I_sig_trhreshold else self.I_sig_trhreshold
+        I_sig_threshold = (
+            I_sig_threshold if I_sig_threshold else self.I_sig_threshold
+        )
+        bdr_threshold = (
+            bdr_threshold if bdr_threshold else self.bdr_threshold 
         )
         logger.info(
-            f"Fetch {key} events with ndp:{Ndpint_threshold} and iSig:{I_sig_trhreshold}"
+            f"Fetch {key} events with ndp:{Ndpint_threshold} and iSig:{I_sig_threshold} and badPoint:{bdr_threshold}" 
         )
         o = self.D.copy()
-        o = o[(o.Ndpint >= Ndpint_threshold) & (o.I_sig > I_sig_trhreshold)]
+        o = o[
+            (o.Ndpint >= Ndpint_threshold) & 
+            (o.I_sig > I_sig_threshold) & 
+            (o.num_bad_data_rsamp <= bdr_threshold)
+        ]
         return o, np.array(o[key])
 
     def get_valid_extreme_events(
@@ -138,6 +148,15 @@ class DialPlot(object):
         plt.suptitle(
             fig_title, x=0.075, y=0.99, ha="left", fontweight="bold", fontsize=15
         )
+        return
+
+    def save(self, fname):
+        self.fig.savefig(fname, bbox_inches="tight")
+        return
+
+    def close(self):
+        self.fig.clf()
+        plt.close()
         return
 
     def create_dial(self):
@@ -269,6 +288,7 @@ class TimeSeriesAnalysis(object):
         self,
         event,
         hours=2,
+        load_parse_rbsp=True,
     ):
         """
         Conduct TS analysis of extreme events
@@ -282,8 +302,9 @@ class TimeSeriesAnalysis(object):
             minute=0, second=0
         )
         self.load_omni()
-        self.load_rbsp_raw_dataset()
-        self.load_parsed_rbsp_dataset()
+        if load_parse_rbsp:
+            self.load_rbsp_raw_dataset()
+            self.load_parsed_rbsp_dataset()
         return
 
     def load_omni(self, loc="tmp/data/omni/*.csv"):
@@ -302,6 +323,9 @@ class TimeSeriesAnalysis(object):
         self.omni = self.omni[
             (self.omni.DATE >= self.stime) & (self.omni.DATE <= self.etime)
         ]
+        bz = np.array(self.omni["Bz_GSM"])
+        bz[bz>100]  = np.nan
+        self.omni.Bz_GSM = bz
         return
 
     def load_rbsp_raw_dataset(self):
@@ -313,7 +337,7 @@ class TimeSeriesAnalysis(object):
         self.sdframe = self.fd.scans_to_pandas(scans)
         return
 
-    def load_parsed_rbsp_dataset(self, loc="tmp/sd.run.13/{date}/{rad}*{kind}.csv"):
+    def load_parsed_rbsp_dataset(self, loc="tmp/sd.run.{run_id}/{date}/{rad}*{kind}.csv", run_id=14):
         """
         Load RBSP data
         """
@@ -326,6 +350,7 @@ class TimeSeriesAnalysis(object):
                     date=self.event.stime.strftime("%Y-%m-%d"),
                     rad=self.event.rad,
                     kind=kind,
+                    run_id=run_id
                 )
             )
             files.sort()
@@ -345,6 +370,14 @@ class StackPlots(object):
         self.fig = plt.figure(figsize=(8, 3 * 5), dpi=240)
         self.num_of_axes_created = 0
         return
+
+    def date_string(self, label_style="web"):
+        # Set the date and time formats
+        dfmt = "%d %b %Y" if label_style == "web" else "%d %b %Y,"
+        tfmt = "%H:%M"
+        stime = self.ts.event.bin_time
+        date_str = "{:{dd} {tt}} UT".format(stime, dd=dfmt, tt=tfmt)
+        return date_str
 
     def create_axes(self):
         """
@@ -374,8 +407,8 @@ class StackPlots(object):
             self.set_time_axis(self.create_axes()),
             "",
             "IMF, nT",
-            r"$E_{rms}=%.1f$  mV / $\sigma_P=%.1f$ S / $JH_r=%.1f$ $mW/m^2$"
-            % (self.ts.event.Erms, self.ts.event.op_ped, self.ts.event.jhr),
+            r"{%s} / $E_{rms}=%.1f$  mV / $\sigma_P=%.1f$ S / $JH_r=%.1f$ $mW/m^2$"
+            % (self.date_string(), self.ts.event.Erms, self.ts.event.op_ped, self.ts.event.jhr),
         )
         ax.plot(
             self.ts.omni.DATE,
@@ -410,13 +443,13 @@ class StackPlots(object):
             ycol="b",
         )
         ax.plot(self.ts.omni.DATE, self.ts.omni.AE, "b-", lw=0.8, label=r"AE")
-        ax.set_ylim(0, 1000)
+        ax.set_ylim(0, 1500)
         ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
         ax = self.set_labels(self.set_time_axis(ax.twinx()), "", "SYM-H, nT", "")
         ax.plot(self.ts.omni.DATE, self.ts.omni["SYM-H"], "k-", lw=0.8, label=r"AE")
-        ax.set_ylim(-50, 20)
+        ax.set_ylim(-150, 20)
         ax.set_xlim(self.ts.stime, self.ts.etime)
         return
 
@@ -490,6 +523,7 @@ class StackPlots(object):
         ]
         data.time = pd.to_datetime(data.time)
         ax.plot(data.time, data.v, "ko", ls="None", ms=0.5)
+        ax.plot(data.time, data.v, "k--", lw=0.5)
         ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
@@ -507,7 +541,7 @@ class StackPlots(object):
             & (data.time_window_start == self.ts.event.stime)
             # & (data.time_window_end <= self.ts.etime)
         ]
-        ax.plot(data.frq * 1e3, data.amp, "ko", ls="None", ms=0.5)
+        ax.plot(data.frq * 1e3, data.amp, "k--", lw=0.8)
         ax.set_xlim(0, 30)
         return
 
