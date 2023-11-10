@@ -289,6 +289,7 @@ class TimeSeriesAnalysis(object):
         event,
         hours=2,
         load_parse_rbsp=True,
+        limit_omni_by_event_time=False,
     ):
         """
         Conduct TS analysis of extreme events
@@ -301,6 +302,7 @@ class TimeSeriesAnalysis(object):
         self.etime = (self.event.etime + dt.timedelta(hours=self.hours + 1)).replace(
             minute=0, second=0
         )
+        self.limit_omni_by_event_time = limit_omni_by_event_time
         self.load_omni()
         if load_parse_rbsp:
             self.load_rbsp_raw_dataset()
@@ -320,9 +322,14 @@ class TimeSeriesAnalysis(object):
                 logger.info(f"Load {f}")
                 self.omni = pd.concat([self.omni, pd.read_csv(f, parse_dates=["DATE"])])
 
-        self.omni = self.omni[
-            (self.omni.DATE >= self.stime) & (self.omni.DATE <= self.etime)
-        ]
+        if self.limit_omni_by_event_time:
+            self.omni = self.omni[
+                (self.omni.DATE >= self.event.stime) & (self.omni.DATE <= self.event.etime)
+            ]
+        else:
+            self.omni = self.omni[
+                (self.omni.DATE >= self.stime) & (self.omni.DATE <= self.etime)
+            ]
         bz = np.array(self.omni["Bz_GSM"])
         bz[bz>100]  = np.nan
         self.omni.Bz_GSM = bz
