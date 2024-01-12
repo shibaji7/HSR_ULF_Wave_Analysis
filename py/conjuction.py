@@ -44,13 +44,14 @@ def compare_config_log_files(folder="config/conjuction-records/", dlat=3., dlon=
     Compare the log files under the folder
     """
     SAT_files = glob.glob(folder + "*footpoints*")
-    sd_record = pd.read_csv(folder + "SD_RBSP_mode_Pc5_event_list.txt", parse_dates=["stime","etime"])
+    sd_record = pd.read_csv(folder + "SD_RBSP_mode_Pc5_event_list_radar_info.txt", parse_dates=["stime","etime"])
     satellites = [sat.split("/")[-1].split("_")[0] for sat in SAT_files]
     records = []
     sat_records = {sat:load_file(sat, file) for sat, file in zip(satellites, SAT_files)}
     for i, rec in tqdm(sd_record.iterrows()):
         stime, etime = rec["stime"], rec["etime"]
         mlat, mlon, mlt = rec["mlat"], rec["mlon"], rec["mlt"]
+        rad, beam, gate = rec["rad"], rec["beam"], rec["gate"]
         for sat in satellites:
             o = sat_records[sat]
             o = o[
@@ -77,6 +78,7 @@ def compare_config_log_files(folder="config/conjuction-records/", dlat=3., dlon=
             ]
             u = pd.concat([u1, u2, u3])
             if len(u) > 0:
+                u["rad"], u["beam"], u["gate"] = rad, beam, gate
                 records.append(u)
     records = pd.concat(records)
     records.to_csv(folder+"conjuction.txt", index=False, header=True)
@@ -87,7 +89,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m", "--method", default="CON", type=str, help="CON: Create Conjunction File; EA: Event analysis survey plots"
     )
-    dlat=3., dlon=10.
     parser.add_argument(
         "-dlat", "--dlat", default=3., type=float, help="Latitude bin to consider conjction"
     )
@@ -98,7 +99,7 @@ if __name__ == "__main__":
     for k in vars(args).keys():
         print("     ", k, "->", str(vars(args)[k]))
     if args.method == "CON":
-        compare_config_log_files(dlat=args.dlat, dlon=arg.dlon)
+        compare_config_log_files(dlat=args.dlat, dlon=args.dlon)
     elif args.method == "EA":
         pass
     else:
