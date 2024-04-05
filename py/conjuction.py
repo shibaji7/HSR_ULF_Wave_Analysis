@@ -18,6 +18,54 @@ import datetime as dt
 import numpy as np
 from tqdm import tqdm
 
+from reader import Reader
+
+def event_analysis(index=0):
+    """
+    Run individual event analysis
+    """
+    records = pd.read_csv(
+        "config/conjuction-records/conjuction.txt",
+        parse_dates=["StartTime","StopTime"]
+    )
+    
+    record = records.iloc[index].to_dict()
+    ea = EventAnalysis(record)
+    return
+
+class EventAnalysis(object):
+    """
+    Read files from databases
+    """
+
+    def __init__(self, event):
+        for key in list(event.keys()):
+            setattr(self, key, event[key])
+        self.has_sd_records = False
+        self.get_radar_observations()
+        self.get_satellite_observations()
+        self.plot_RTI_panels()
+        return
+
+    def get_radar_observations(self):
+        self.reader = Reader()
+        logs = self.reader.check_entries(
+            rad = self.rad, 
+            date = self.StartTime.date()
+        )
+        if len(logs) > 0:
+            self.has_sd_records = True
+            index = logs.index[0]
+            logs = logs.to_dict("records")[0]
+            self.reader.parse_files(select=[index])
+        return
+    
+    def get_satellite_observations(self):
+        return
+    
+    def plot_RTI_panels(self):
+        return
+
 def load_file(sat, file):
     """
     Load a file name
@@ -87,7 +135,7 @@ def compare_config_log_files(folder="config/conjuction-records/", dlat=3., dlon=
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Conjuction Study")
     parser.add_argument(
-        "-m", "--method", default="CON", type=str, help="CON: Create Conjunction File; EA: Event analysis survey plots"
+        "-m", "--method", default="EA", type=str, help="CON: Create Conjunction File; EA: Event analysis survey plots"
     )
     parser.add_argument(
         "-dlat", "--dlat", default=3., type=float, help="Latitude bin to consider conjction"
@@ -95,13 +143,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-dlon", "--dlon", default=10., type=float, help="Longitude bin to consider conjction"
     )
+    parser.add_argument(
+        "-i", "--index", default=0, type=int, help="Event analysis"
+    )
     args = parser.parse_args()
     for k in vars(args).keys():
         print("     ", k, "->", str(vars(args)[k]))
     if args.method == "CON":
         compare_config_log_files(dlat=args.dlat, dlon=args.dlon)
     elif args.method == "EA":
-        pass
+        event_analysis(index=args.index)
     else:
         print(f"Invalid method / not implemented {args.method}")
     

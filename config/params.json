@@ -46,13 +46,13 @@
     "param": true
   },
   "files": {
-    "stage": "tmp/stage/{date}/",
-    "base": "tmp/sd.run.{run_id}/{date}/",
+    "stage": "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/stage/{date}/",
+    "base": "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/latest/sd.run.{run_id}/{date}/",
     "arc_base": "LFS/HSR_ULF_WAVE/sd.run.{run_id}/{date}/",
     "arc_stage": "LFS/HSR_ULF_WAVE/stage/{date}/",
     "csv": "{rad}_{stime}_{etime}_%s.csv",
     "log": "{rad}_{stime}_{etime}_%s.log",
     "rti_plot": "{rad}_{bm}_{stime}_{etime}.png",
-    "analysis": "tmp/sd.run.{run_id}/analysis/"
+    "analysis": "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/latest/sd.run.{run_id}/analysis/"
   }
 }

@@ -46,6 +46,7 @@ class Folder(object):
         for p in params:
             self.dirs[p] = self.dirs[p].format(rad=rad, stime=stime, etime=etime)
             if os.path.exists(self.dirs[p]) and os.stat(self.dirs[p]).st_size > 1:
+                logger.info(f"Load file: {self.dirs[p]}")
                 self.frames[p] = (
                     pd.read_csv(self.dirs[p])
                     if p == "fft"
@@ -128,19 +129,21 @@ class Reader(object):
         logger.info(f"RBSP mode log entry -to- dataframe")
         return
 
-    def check_entries(self, T=None, rad=None):
+    def check_entries(self, T=None, rad=None, date=None):
         """
         Check entries by
         T: time winodw
         rad: radar name
         """
         o = self.rbsp_logs.copy()
+        o["date"] = o["stime"].dt.date
         if rad is not None:
             o = o[o.rad == rad]
         if (T is not None) and (len(T) == 2):
-            o = o[(o.stime >= T[0]) & (o.etime <= T[1])]
+            o = o[(T[0] >= o.stime) & (o.etime <= T[1])]
+        if date is not None:
+            o = o[o.date==date]
         logger.info(f"RBSP mode log entries {len(o)}")
-        print(o)
         return o
 
     def load_params(self, dates):
