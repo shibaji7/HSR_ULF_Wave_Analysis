@@ -344,7 +344,9 @@ class TimeSeriesAnalysis(object):
         return
 
     def load_parsed_rbsp_dataset(
-        self, loc="tmp/sd.run.{run_id}/{date}/{rad}*{kind}.csv", run_id=14
+        self,
+        loc="/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/latest/sd.run.{run_id}/{date}/{rad}*{kind}.csv",
+        run_id=14,
     ):
         """
         Load RBSP data
@@ -352,7 +354,6 @@ class TimeSeriesAnalysis(object):
         self.rbsp_data = {}
         kinds = ["rsamp", "fft", "fill", "dtrnd"]
         for kind in kinds:
-            logger.info(f"Loading {kind}-data")
             files = glob.glob(
                 loc.format(
                     date=self.event.stime.strftime("%Y-%m-%d"),
@@ -361,6 +362,7 @@ class TimeSeriesAnalysis(object):
                     run_id=run_id,
                 )
             )
+            logger.info(f"Loading {kind}-data. Data exists {len(files)}")
             files.sort()
             dat = pd.DataFrame()
             for f in files:
@@ -411,17 +413,18 @@ class StackPlots(object):
         return ax
 
     def plot_indexs(self):
+        detailed_txt = self.date_string()
+        if hasattr(self.ts.event, "Erms"):
+            detailed_txt += r" / $E_{rms}=%.1f$  mV" % self.ts.event.Erms
+        if hasattr(self.ts.event, "op_ped"):
+            detailed_txt += r" / $\sigma_P=%.1f$ S" % self.ts.event.op_ped
+        if hasattr(self.ts.event, "jhr"):
+            detailed_txt += r" / $JH_r=%.1f$ $mW/m^2$" % self.ts.event.jhr
         ax = self.set_labels(
             self.set_time_axis(self.create_axes()),
             "",
             "IMF, nT",
-            r"{%s} / $E_{rms}=%.1f$  mV / $\sigma_P=%.1f$ S / $JH_r=%.1f$ $mW/m^2$"
-            % (
-                self.date_string(),
-                self.ts.event.Erms,
-                self.ts.event.op_ped,
-                self.ts.event.jhr,
-            ),
+            detailed_txt,
         )
         ax.plot(
             self.ts.omni.DATE,

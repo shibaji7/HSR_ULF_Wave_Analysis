@@ -44,12 +44,14 @@ class EventAnalysis(object):
     """
 
     def __init__(self, event, index):
+        self.event = event
+        self.index = index
         for key in list(event.keys()):
             setattr(self, key, event[key])
-        self.has_sd_records = 0
+        self.has_records = 0
         if not os.path.exists(BASE_LOCATION):
             os.makedirs(BASE_LOCATION, exist_ok=True)
-        self.fig_file_name = BASE_LOCATION + f"event-{'%02d'%index}.png"
+        self.fig_file_name = BASE_LOCATION + f"event-{'%02d'%self.index}.png"
         self.get_radar_observations()
         self.get_satellite_observations()
         self.plot_RTI_panels()
@@ -60,7 +62,11 @@ class EventAnalysis(object):
         self.logs = self.reader.check_entries(rad=self.rad, date=self.StartTime.date())
         if len(self.logs) > 0:
             self.has_records += 1
-            self.timeseries = TimeSeriesAnalysis(self.logs.iloc[0])
+            log = self.logs.iloc[0].to_dict()
+            log.update(self.event)
+            log["bin_time"] = log["date"]
+            log = pd.DataFrame.from_records([log])
+            self.timeseries = TimeSeriesAnalysis(log.iloc[0])
         return
 
     def get_satellite_observations(self):
@@ -68,7 +74,7 @@ class EventAnalysis(object):
         return
 
     def plot_RTI_panels(self):
-        if self.has_sd_records >= 1:
+        if self.has_records >= 1:
             sp = StackPlots(self.timeseries)
             sp.plot_indexs()
             sp.addParamPlot(pmin=-300, pmax=300)
