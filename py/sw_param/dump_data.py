@@ -17,7 +17,7 @@ from calendar import monthrange
 import numpy as np
 import requests
 
-BASE_LOCATION = "tmp/data/"
+BASE_LOCATION = "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/"
 
 
 def ini():
@@ -71,8 +71,10 @@ def download_symH_dataset():
 ## Download 3h resolution Kp data from WDC Kyoto ftp server
 ##############################################################################################
 def download_Kp_dataset():
-    if not os.path.exists("tmp/data/geomag/Kp/raw/Kp.asc"):
-        cmd = 'curl -o "tmp/data/geomag/Kp/raw/Kp.asc" --data "SCent=20&STens=1&SYear=2&From=1&ECent=20&ETens=1&EYear=8&To=1&Email=shibaji7%40vt.edu" http://wdc.kugi.kyoto-u.ac.jp/cgi-bin/kp-cgi'
+    if not os.path.exists(
+        "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/geomag/Kp/raw/Kp.asc"
+    ):
+        cmd = 'curl -o "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/geomag/Kp/raw/Kp.asc" --data "SCent=20&STens=1&SYear=2&From=1&ECent=20&ETens=1&EYear=8&To=1&Email=shibaji7%40vt.edu" http://wdc.kugi.kyoto-u.ac.jp/cgi-bin/kp-cgi'
         os.system(cmd)
     return
 

@@ -20,7 +20,8 @@ import pandas as pd
 
 np.random.seed(0)
 
-BASE_LOCATION = "tmp/data/"
+BASE_LOCATION = "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/"
+
 
 ######################################################################################################
 ## This function reads all the files from omni raw database and convert to .hdf5 files
@@ -199,4 +200,4 @@ def raw_Kp_to_hdf5():
 if __name__ == "__main__":
     raw_Kp_to_hdf5()
     # raw_symh_to_hdf5()
-    # raw_omni_to_hdf5()
+    raw_omni_to_hdf5()

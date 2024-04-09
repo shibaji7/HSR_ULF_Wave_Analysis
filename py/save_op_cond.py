@@ -141,7 +141,6 @@ def save_wave_event_cond_batch(
     homedir="/home/xueling/",
     fluxtypes=["diff", "mono", "wave"],
 ):
-
     df_wave = pd.read_csv(fn_wave)
     df_wave["stime"] = df_wave["stime"].astype("datetime64[ns]")
     mt_tmp = df_wave["stime"] + datetime.timedelta(minutes=30)

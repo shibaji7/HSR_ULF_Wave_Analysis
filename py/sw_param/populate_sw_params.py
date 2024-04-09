@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 import ray
 
-BASE_LOCATION = "tmp/data/"
-CSV = "tmp/sd.run.14/analysis/"
+BASE_LOCATION = "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/"
+CSV = "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/latest/sd.run.14/analysis/"
 
 
 def fetch_os_data(row, Kp):

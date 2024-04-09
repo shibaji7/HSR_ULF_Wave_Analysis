@@ -142,7 +142,7 @@ class Reader(object):
         if (T is not None) and (len(T) == 2):
             o = o[(T[0] >= o.stime) & (o.etime <= T[1])]
         if date is not None:
-            o = o[o.date==date]
+            o = o[o.date == date]
         logger.info(f"RBSP mode log entries {len(o)}")
         return o
 

@@ -68,20 +68,16 @@ class Stats(object):
         Ndpint_threshold = (
             Ndpint_threshold if Ndpint_threshold else self.Ndpint_threshold
         )
-        I_sig_threshold = (
-            I_sig_threshold if I_sig_threshold else self.I_sig_threshold
-        )
-        bdr_threshold = (
-            bdr_threshold if bdr_threshold else self.bdr_threshold 
-        )
+        I_sig_threshold = I_sig_threshold if I_sig_threshold else self.I_sig_threshold
+        bdr_threshold = bdr_threshold if bdr_threshold else self.bdr_threshold
         logger.info(
-            f"Fetch {key} events with ndp:{Ndpint_threshold} and iSig:{I_sig_threshold} and badPoint:{bdr_threshold}" 
+            f"Fetch {key} events with ndp:{Ndpint_threshold} and iSig:{I_sig_threshold} and badPoint:{bdr_threshold}"
         )
         o = self.D.copy()
         o = o[
-            (o.Ndpint >= Ndpint_threshold) & 
-            (o.I_sig > I_sig_threshold) & 
-            (o.num_bad_data_rsamp <= bdr_threshold)
+            (o.Ndpint >= Ndpint_threshold)
+            & (o.I_sig > I_sig_threshold)
+            & (o.num_bad_data_rsamp <= bdr_threshold)
         ]
         return o, np.array(o[key])
 
@@ -309,7 +305,9 @@ class TimeSeriesAnalysis(object):
             self.load_parsed_rbsp_dataset()
         return
 
-    def load_omni(self, loc="tmp/data/omni/*.csv"):
+    def load_omni(
+        self, loc="/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/data/omni/*.csv"
+    ):
         """
         Load OMNI dataset
         """
@@ -324,14 +322,15 @@ class TimeSeriesAnalysis(object):
 
         if self.limit_omni_by_event_time:
             self.omni = self.omni[
-                (self.omni.DATE >= self.event.stime) & (self.omni.DATE <= self.event.etime)
+                (self.omni.DATE >= self.event.stime)
+                & (self.omni.DATE <= self.event.etime)
             ]
         else:
             self.omni = self.omni[
                 (self.omni.DATE >= self.stime) & (self.omni.DATE <= self.etime)
             ]
         bz = np.array(self.omni["Bz_GSM"])
-        bz[bz>100]  = np.nan
+        bz[bz > 100] = np.nan
         self.omni.Bz_GSM = bz
         return
 
@@ -344,7 +343,9 @@ class TimeSeriesAnalysis(object):
         self.sdframe = self.fd.scans_to_pandas(scans)
         return
 
-    def load_parsed_rbsp_dataset(self, loc="tmp/sd.run.{run_id}/{date}/{rad}*{kind}.csv", run_id=14):
+    def load_parsed_rbsp_dataset(
+        self, loc="tmp/sd.run.{run_id}/{date}/{rad}*{kind}.csv", run_id=14
+    ):
         """
         Load RBSP data
         """
@@ -357,7 +358,7 @@ class TimeSeriesAnalysis(object):
                     date=self.event.stime.strftime("%Y-%m-%d"),
                     rad=self.event.rad,
                     kind=kind,
-                    run_id=run_id
+                    run_id=run_id,
                 )
             )
             files.sort()
@@ -415,7 +416,12 @@ class StackPlots(object):
             "",
             "IMF, nT",
             r"{%s} / $E_{rms}=%.1f$  mV / $\sigma_P=%.1f$ S / $JH_r=%.1f$ $mW/m^2$"
-            % (self.date_string(), self.ts.event.Erms, self.ts.event.op_ped, self.ts.event.jhr),
+            % (
+                self.date_string(),
+                self.ts.event.Erms,
+                self.ts.event.op_ped,
+                self.ts.event.jhr,
+            ),
         )
         ax.plot(
             self.ts.omni.DATE,

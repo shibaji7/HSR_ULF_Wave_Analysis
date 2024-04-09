@@ -12,20 +12,26 @@ __email__ = "shibaji7@vt.edu"
 __status__ = "Research"
 
 # Import the modules we need.
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-plt.style.use(['ieee', 'science'])
+
+plt.style.use(["ieee", "science"])
 
 
 import sys
+
 sys.path.append("py/")
-from analytics import Stats, DialPlot, TimeSeriesAnalysis, StackPlots
-import numpy as np
 import os
 
+import numpy as np
+from analytics import DialPlot, StackPlots, Stats, TimeSeriesAnalysis
+
+
 def generate_statistics(
-    files, Ndpint_threshold, I_sig_threshold,
-    bdr_threshold, jhr_lim, 
+    files,
+    Ndpint_threshold,
+    I_sig_threshold,
+    bdr_threshold,
+    jhr_lim,
 ):
     """
     Populate statistics for all events
@@ -37,7 +43,7 @@ def generate_statistics(
         files,
         Ndpint_threshold=Ndpint_threshold,
         I_sig_threshold=I_sig_threshold,
-        bdr_threshold=bdr_threshold
+        bdr_threshold=bdr_threshold,
     )
     # Fetch Extreme Events
     events, _ = stat.get_valid_extreme_events(jhr_lim=jhr_lim)
@@ -47,17 +53,17 @@ def generate_statistics(
         ncols=2,
     )
     dials.plot_scatter(
-        np.deg2rad(events.mlt*15-90),
-        90-events.mlat,
+        np.deg2rad(events.mlt * 15 - 90),
+        90 - events.mlat,
         events.Erms,
-        txt=r"$J_{th}$=%d $mW/m^2$"%jhr_lim,
+        txt=r"$J_{th}$=%d $mW/m^2$" % jhr_lim,
         size=5,
     )
     dials.plot_scatter(
-        np.deg2rad(events.mlt*15-90),
-        90-events.mlat,
+        np.deg2rad(events.mlt * 15 - 90),
+        90 - events.mlat,
         events.jhr,
-        vlims=[jhr_lim, jhr_lim*4],
+        vlims=[jhr_lim, jhr_lim * 4],
         label=r"Joule heating, $mW/m^2$",
         size=5,
     )
@@ -73,7 +79,7 @@ def generate_statistics(
         sp = StackPlots(ts)
         sp.plot_indexs()
         sp.addParamPlot(pmin=-300, pmax=300)
-        sp.add_time_series(ylim=[-1000,1000])
+        sp.add_time_series(ylim=[-1000, 1000])
         sp.add_fft()
         sp.save(fig_file_name)
         sp.close()
@@ -87,7 +93,9 @@ if __name__ == "__main__":
     bdr_threshold = 3
     jhr_lim = 2
     generate_statistics(
-        files, Ndpint_threshold, I_sig_threshold,
-        bdr_threshold, jhr_lim, 
+        files,
+        Ndpint_threshold,
+        I_sig_threshold,
+        bdr_threshold,
+        jhr_lim,
     )
-    
