@@ -298,6 +298,7 @@ class TimeSeriesAnalysis(object):
         self.etime = (self.event.etime + dt.timedelta(hours=self.hours + 1)).replace(
             minute=0, second=0
         )
+        self.StartTime, self.StopTime = self.event.StartTime, self.event.StopTime
         self.limit_omni_by_event_time = limit_omni_by_event_time
         self.load_omni()
         if load_parse_rbsp:
@@ -450,6 +451,7 @@ class StackPlots(object):
         ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
+        ax.set_xlim(self.ts.StartTime, self.ts.StopTime)
 
         ax = self.set_labels(
             self.set_time_axis(self.create_axes()),
@@ -460,13 +462,12 @@ class StackPlots(object):
         )
         ax.plot(self.ts.omni.DATE, self.ts.omni.AE, "b-", lw=0.8, label=r"AE")
         ax.set_ylim(0, 1500)
-        ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
         ax = self.set_labels(self.set_time_axis(ax.twinx()), "", "SYM-H, nT", "")
         ax.plot(self.ts.omni.DATE, self.ts.omni["SYM-H"], "k-", lw=0.8, label=r"AE")
         ax.set_ylim(-150, 20)
-        ax.set_xlim(self.ts.stime, self.ts.etime)
+        ax.set_xlim(self.ts.StartTime, self.ts.StopTime)
         return
 
     def addParamPlot(
@@ -493,11 +494,11 @@ class StackPlots(object):
         im = ax.pcolormesh(
             X, Y, Z.T, lw=0.01, edgecolors="None", cmap=cmap, vmax=pmax, vmin=pmin
         )
-        ax.set_xlim(self.ts.stime, self.ts.etime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
         ax.axhline(self.ts.event.gate, color="m", ls="--", lw=0.4)
         self._add_colorbar(ax, im, label=label)
+        ax.set_xlim(self.ts.StartTime, self.ts.StopTime)
         return
 
     def _add_colorbar(self, ax, im, label=""):
@@ -540,7 +541,7 @@ class StackPlots(object):
         data.time = pd.to_datetime(data.time)
         ax.plot(data.time, data.v, "ko", ls="None", ms=0.5)
         ax.plot(data.time, data.v, "k--", lw=0.5)
-        ax.set_xlim(self.ts.stime, self.ts.etime)
+        ax.set_xlim(self.ts.StartTime, self.ts.StopTime)
         ax.axvline(self.ts.event.stime, color="gray", ls="-", lw=0.4)
         ax.axvline(self.ts.event.etime, color="gray", ls="-", lw=0.4)
         ax.set_ylim(ylim)
