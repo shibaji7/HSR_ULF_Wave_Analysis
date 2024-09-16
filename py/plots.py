@@ -24,7 +24,9 @@ import utils as utils
 from matplotlib.dates import DateFormatter
 
 matplotlib.use("Agg")
-matplotlib.style.use(["science", "ieee"])
+plt.style.use(["science", "ieee"])
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Tahoma", "DejaVu Sans", "Lucida Grande", "Verdana"]
 
 
 class RangeTimeIntervalPlot(object):
@@ -305,6 +307,7 @@ class AnalysisStackPlots(object):
         plt.suptitle(
             fig_title, x=0.075, y=0.99, ha="left", fontweight="bold", fontsize=15
         )
+        utils.setsize(12)
         return
 
     def save(self, filepath):
@@ -325,19 +328,20 @@ class AnalysisStackPlots(object):
         self,
         xtime,
         yval,
+        xlim,
         title="",
         xlabel="Time, UT",
-        ylabel="Velo, m/s",
+        ylabel=f"Velocity, $m s^{-1}$",
         col="r",
         ls="-",
         lw=1.0,
         a=0.7,
     ):
         ax = self._add_axis()
-        ax.set_xlabel(xlabel, fontdict={"size": 12, "fontweight": "bold"})
-        ax.set_ylabel(ylabel, fontdict={"size": 12, "fontweight": "bold"})
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
         ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
-        ax.xaxis.set_major_formatter(DateFormatter(r"$%H^{%M}$"))
+        ax.xaxis.set_major_formatter(DateFormatter(r"%H^{%M}"))
         hours = mdates.HourLocator(byhour=range(0, 24, 1))
         ax.xaxis.set_major_locator(hours)
         dtime = (
@@ -345,20 +349,47 @@ class AnalysisStackPlots(object):
             - pd.Timestamp(xtime.tolist()[0]).to_pydatetime()
         ).total_seconds() / 3600.0
         if dtime < 4.0:
-            minutes = mdates.MinuteLocator(byminute=range(0, 60, 30))
+            minutes = mdates.MinuteLocator(byminute=range(0, 60, 15))
             ax.xaxis.set_minor_locator(minutes)
-            ax.xaxis.set_minor_formatter(DateFormatter(r"$%H^{%M}$"))
+            ax.xaxis.set_minor_formatter(DateFormatter(r"%H^{%M}"))
         ax.plot(xtime, yval, col + "s", ms=0.8, alpha=a)
         ax.set_ylim([-1000, 1000])
+        ax.set_xlim(xlim)
         return
 
     def add_FFT_axes(
-        self, freq, amp, title="", xlabel="Freq, Hz", ylabel=r"PSD, $(m/s)^2/Hz$"
+        self, freq, amp, xlim, title="", xlabel="Frequency, Hz", ylabel=r"PSD, $m^2 s^{-2}Hz^{-1}$"
     ):
         ax = self._add_axis()
-        ax.set_xlabel(xlabel, fontdict={"size": 12, "fontweight": "bold"})
-        ax.set_ylabel(ylabel, fontdict={"size": 12, "fontweight": "bold"})
-        ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title, loc="left")
         ax.plot(freq, amp, "ks", ms=0.8)
-        ax.semilogx(freq, amp, "b", ls="-", lw=1.0, alpha=0.7)
+        ax.loglog(freq, amp, "b", ls="-", lw=0.8, alpha=0.7)
+        ax.set_xlim(xlim)
         return
+
+
+if __name__ == "__main__":
+    import datetime as dt
+    from reader import Reader
+    # Create a reader object that reads all the RBSP mode entries
+    r = Reader()
+    # Check for entries by radar / datetime interval
+    o = r.check_entries( 
+        rad="kap", 
+        date=dt.date(2015,1,7)
+    )
+    iloc = o.index.tolist()[-1]
+    print(o, iloc)
+    # Read all the files with selected index by passing selected list index
+    r.parse_files(select=[iloc])
+    # # Fetch FFT data by beam, gate, and Tx count
+    of = r.file_entries[iloc].get_data(p="fft", beams=[10], gates=[14], Tx=[16])
+    ox = r.file_entries[iloc].get_data(p="rsamp", beams=[10], gates=[14], Tx=[16])
+    print(ox.head(), ox.tail())
+    # Plot all the axis
+    plot = AnalysisStackPlots(f"FFT Analysis: 22-23 UT 7 January 2015, KAP/10/14", 2)
+    plot.add_TS_axes(ox.time, ox.v, [dt.datetime(2015,1,7,22), dt.datetime(2015,1,7,23)])
+    plot.add_FFT_axes(of.frq, of.amp, [1e-4, 1e-1])
+    plot.save("Figure02.png")

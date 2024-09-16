@@ -401,6 +401,13 @@ def fetch_file(conn, local_file, LFS):
         from_remote_FS(conn, local_file, LFS)
     return is_remote
 
+def setsize(size=8):
+    import matplotlib as mpl
+
+    mpl.rcParams.update(
+        {"xtick.labelsize": size, "ytick.labelsize": size, "font.size": size}
+    )
+    return
 
 if __name__ == "__main__":
     "__main__ function"
