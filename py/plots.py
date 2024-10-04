@@ -352,7 +352,7 @@ class AnalysisStackPlots(object):
             minutes = mdates.MinuteLocator(byminute=range(0, 60, 15))
             ax.xaxis.set_minor_locator(minutes)
             ax.xaxis.set_minor_formatter(DateFormatter(r"%H^{%M}"))
-        ax.plot(xtime, yval, col + "s", ms=0.8, alpha=a)
+        ax.plot(xtime, yval, col + "s", ls="-", ms=0.8, alpha=a)
         ax.set_ylim([-1000, 1000])
         ax.set_xlim(xlim)
         return
