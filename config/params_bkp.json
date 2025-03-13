@@ -47,7 +47,7 @@
   },
   "files": {
     "stage": "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/stage/{date}/",
-    "base": "../latest/sd.run.{run_id}/{date}/",
+    "base": "/home/shibaji/OneDrive/SuperDARN-Data-Share/Shi/HSR/latest/sd.run.{run_id}/{date}/",
     "arc_base": "LFS/HSR_ULF_WAVE/sd.run.{run_id}/{date}/",
     "arc_stage": "LFS/HSR_ULF_WAVE/stage/{date}/",
     "csv": "{rad}_{stime}_{etime}_%s.csv",

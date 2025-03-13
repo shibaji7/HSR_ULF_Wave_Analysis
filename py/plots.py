@@ -302,7 +302,7 @@ class AnalysisStackPlots(object):
         self.num_subplots = num_subplots
         self._num_subplots_created = 0
         self.fig = plt.figure(
-            figsize=(6, 3 * num_subplots), dpi=150
+            figsize=(6, 3 * num_subplots), dpi=1000
         )  # Size for website
         plt.suptitle(
             fig_title, x=0.075, y=0.99, ha="left", fontweight="bold", fontsize=15
@@ -365,6 +365,7 @@ class AnalysisStackPlots(object):
         ax.set_ylabel(ylabel)
         ax.set_title(title, loc="left")
         ax.plot(freq, amp, "ks", ms=0.8)
+        ax.axvline(freq.tolist()[np.argmax(amp)], ls="--", color="k", lw=0.8)
         ax.loglog(freq, amp, "b", ls="-", lw=0.8, alpha=0.7)
         ax.set_xlim(xlim)
         return
@@ -392,4 +393,4 @@ if __name__ == "__main__":
     plot = AnalysisStackPlots(f"FFT Analysis: 22-23 UT 7 January 2015, KAP/10/14", 2)
     plot.add_TS_axes(ox.time, ox.v, [dt.datetime(2015,1,7,22), dt.datetime(2015,1,7,23)])
     plot.add_FFT_axes(of.frq, of.amp, [1e-4, 1e-1])
-    plot.save("Figure02.png")
+    plot.save("Figure02_1000dpi.png")
